@@ -1,11 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { MigrationRunner } from "./migration-runner.service";
+import { MigrationsRunner } from "./migration-runner.service";
 import { getModelToken } from "@nestjs/mongoose";
 import { MigrationsScripts } from "./migrations-scripts.provider";
 import { MigrationVersionRepo } from "./schemas/migration-version.repo";
 
 describe("MigrationsService", () => {
-  let service: MigrationRunner;
+  let service: MigrationsRunner;
   const getCurrentVersionMock = jest.fn();
   const getAvailableMigrationMock = jest.fn();
   const scriptRunMigrationMock = jest.fn();
@@ -22,7 +22,7 @@ describe("MigrationsService", () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        MigrationRunner,
+        MigrationsRunner,
         {
           provide: getModelToken("MigrationVersion"),
           useValue: {
@@ -49,7 +49,7 @@ describe("MigrationsService", () => {
       ],
     }).compile();
 
-    service = module.get<MigrationRunner>(MigrationRunner);
+    service = module.get<MigrationsRunner>(MigrationsRunner);
   });
 
   function givenAMigration() {

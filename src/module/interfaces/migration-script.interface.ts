@@ -1,3 +1,4 @@
 export interface IMigrationScript {
-	run: () => Promise<void>;
+  version: number;
+  run: () => Promise<void>;
 }

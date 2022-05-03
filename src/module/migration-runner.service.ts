@@ -3,8 +3,8 @@ import { MigrationsScripts } from "./migrations-scripts.provider";
 import { MigrationVersionRepo } from "./schemas/migration-version.repo";
 
 @Injectable()
-export class MigrationRunner implements OnModuleInit {
-  private readonly logger = new Logger(MigrationRunner.name);
+export class MigrationsRunner implements OnModuleInit {
+  private readonly logger = new Logger(MigrationsRunner.name);
 
   constructor(
     private migrationVersionRepo: MigrationVersionRepo,
@@ -56,6 +56,6 @@ export class MigrationRunner implements OnModuleInit {
       await this.migrationVersionRepo.getCurrentVersion();
     return this.migrationsScripts
       .getAvailableMigrationsVersions()
-      .filter((_) => _ > current_version);
+      .filter((m) => m > current_version);
   }
 }

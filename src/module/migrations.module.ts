@@ -5,7 +5,7 @@ import {
   MigrationVersion,
   MigrationVersionSchema,
 } from "./schemas/migration-version.schema";
-import { MigrationRunner } from "./migration-runner.service";
+import { MigrationsRunner } from "./migration-runner.service";
 import { MigrationsScripts } from "./migrations-scripts.provider";
 import { MigrationVersionRepo } from "./schemas/migration-version.repo";
 
@@ -23,14 +23,14 @@ export const MigrationScriptFactory = (options: IExternalOptions) => {
 export class MigrationsModule {
   static forRoot(options: IExternalOptions): DynamicModule {
     const providers = [
-      MigrationRunner,
+      MigrationsRunner,
       MigrationVersionRepo,
       ...options.scripts,
       MigrationScriptFactory(options),
     ];
     return {
       imports: [
-        // MongooseModule.forRoot(options.mongodb_url),
+        MongooseModule.forRoot(options.mongodb_url),
         MongooseModule.forFeature([
           { name: MigrationVersion.name, schema: MigrationVersionSchema },
         ]),

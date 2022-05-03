@@ -14,17 +14,23 @@ export class MigrationsScripts {
   }
 
   public getAvailableMigrationsVersions(): number[] {
-    return this.migrations.map((e, i) => i + 1);
+    // TODO handle dudplicated versions
+    // filter((e, i, a) => a.indexOf(e) !== i)
+    const result = this.migrations.map((e) => e.version);
+    const numericCompare = (a, b) => a - b;
+    return result.sort(numericCompare);
   }
 
-  public async runMigration(migration: number): Promise<any> {
+  public async runMigration(migrationToRun: number): Promise<any> {
     try {
-      this.logger.log(`Migration script ${migration} run start.`);
-      await this.migrations[migration - 1].run();
-      this.logger.log(`Migration script ${migration} run finished.`);
+      this.logger.log(`Migration script ${migrationToRun} run start.`);
+      await this.migrations
+        .filter((m) => m.version === migrationToRun)[0]
+        .run();
+      this.logger.log(`Migration script ${migrationToRun} run finished.`);
     } catch (e: any) {
       this.logger.error(
-        `Migration script ${migration} failed with ${e.message || e}`
+        `Migration script ${migrationToRun} failed with ${e.message || e}`
       );
       throw e;
     }
