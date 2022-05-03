@@ -1,7 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { IMigrationScript } from "./interfaces/migration-script.interface";
 
+@Injectable()
 export class MigrationsScripts {
+  private readonly logger = new Logger(MigrationsScripts.name);
+
   constructor(private readonly migrations: IMigrationScript[]) {
     this.logger.debug(
       `Available migrations: ${this.migrations
@@ -10,9 +13,7 @@ export class MigrationsScripts {
     );
   }
 
-  private readonly logger = new Logger(MigrationsScripts.name);
-
-  public getAvailableMigrations(): number[] {
+  public getAvailableMigrationsVersions(): number[] {
     return this.migrations.map((e, i) => i + 1);
   }
 

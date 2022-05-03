@@ -16,6 +16,7 @@ export class MigrationRunner implements OnModuleInit {
       this.runMigrations(); // this is intended not to be awaited in order to not block app bootstrap
     } catch (e: any) {
       this.logger.error(`Unexpected migration error: ${e?.message || e}`);
+      this.logger.error(e);
     }
   }
 
@@ -42,6 +43,7 @@ export class MigrationRunner implements OnModuleInit {
         this.logger.error(
           `Migration ${migration} failed no other migrations will be executed`
         );
+        this.logger.error(error);
         await this.migrationVersionRepo.saveMigrationLock(false);
         break;
       }
@@ -53,7 +55,7 @@ export class MigrationRunner implements OnModuleInit {
     const current_version: number =
       await this.migrationVersionRepo.getCurrentVersion();
     return this.migrationsScripts
-      .getAvailableMigrations()
+      .getAvailableMigrationsVersions()
       .filter((_) => _ > current_version);
   }
 }
