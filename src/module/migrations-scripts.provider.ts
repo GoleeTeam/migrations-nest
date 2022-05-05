@@ -16,7 +16,13 @@ export class MigrationsScripts {
   public getAvailableMigrationsVersions(): number[] {
     // TODO handle dudplicated versions
     // filter((e, i, a) => a.indexOf(e) !== i)
-    const result = this.migrations.map((e) => e.version);
+    const result = this.migrations.map((m) => {
+      if (!m.version)
+        throw new Error(
+          `Migration Script: ${m.constructor.name} must have a 'version' attribute!`
+        );
+      return m.version;
+    });
     const numericCompare = (a, b) => a - b;
     return result.sort(numericCompare);
   }
