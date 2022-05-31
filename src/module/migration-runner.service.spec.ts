@@ -4,14 +4,17 @@ import { getModelToken } from "@nestjs/mongoose";
 import { MigrationsScripts } from "./migrations-scripts.provider";
 import { MigrationVersionRepo } from "./schemas/migration-version.repo";
 
-describe("MigrationsService", () => {
+describe("MigrationsRunner", () => {
   let service: MigrationsRunner;
-  const getCurrentVersionMock = jest.fn();
   const getAvailableMigrationMock = jest.fn();
   const scriptRunMigrationMock = jest.fn();
+
+  const getCurrentVersionMock = jest.fn();
   const setCurrentVersionMock = jest.fn();
   const getMigrationLock = jest.fn();
   const saveMigrationLock = jest.fn();
+  const setLastRunCompletedMock = jest.fn();
+  const setLastRunErrorMock = jest.fn();
 
   afterEach(() => {
     jest.resetAllMocks();
@@ -44,6 +47,8 @@ describe("MigrationsService", () => {
             setCurrentVersion: setCurrentVersionMock,
             getMigrationLock: getMigrationLock,
             saveMigrationLock: saveMigrationLock,
+            setLastRunCompleted: setLastRunCompletedMock,
+            setLastRunError: setLastRunErrorMock,
           },
         },
       ],
@@ -120,6 +125,36 @@ describe("MigrationsService", () => {
 
       await service.runMigrations();
       expect(scriptRunMigrationMock).not.toBeCalled();
+    });
+
+    it("should set last run completed to false in case of failure", async () => {
+      givenAMigration();
+      scriptRunMigrationMock.mockRejectedValue(new Error("Script failed"));
+
+      expect(await service.runMigrations()).toEqual([]);
+      expect(setLastRunCompletedMock).toBeCalledWith(false);
+    });
+
+    it("should set last error in case of failure", async () => {
+      givenAMigration();
+      scriptRunMigrationMock.mockRejectedValue(new Error("Script failed"));
+
+      expect(await service.runMigrations()).toEqual([]);
+      expect(setLastRunErrorMock).toBeCalledWith("Script failed");
+    });
+
+    it("should set last run completed to true in case of success", async () => {
+      givenAMigration();
+
+      await service.runMigrations();
+      expect(setLastRunCompletedMock).toBeCalledWith(true);
+    });
+
+    it("should set last error as empty in case of failure", async () => {
+      givenAMigration();
+
+      await service.runMigrations();
+      expect(setLastRunErrorMock).toBeCalledWith("");
     });
   });
 });

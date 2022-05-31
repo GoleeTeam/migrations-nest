@@ -39,12 +39,18 @@ export class MigrationsRunner implements OnModuleInit {
         await this.migrationVersionRepo.setCurrentVersion(migration);
         await this.migrationVersionRepo.saveMigrationLock(false);
         ok_migrations.push(migration);
-      } catch (error) {
+        await this.migrationVersionRepo.setLastRunCompleted(true);
+        await this.migrationVersionRepo.setLastRunError("");
+      } catch (error: any) {
         this.logger.error(
           `Migration ${migration} failed no other migrations will be executed`
         );
         this.logger.error(error);
         await this.migrationVersionRepo.saveMigrationLock(false);
+        await this.migrationVersionRepo.setLastRunCompleted(false);
+        await this.migrationVersionRepo.setLastRunError(
+          error.message || JSON.stringify(error)
+        );
         break;
       }
     }
