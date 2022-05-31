@@ -14,25 +14,41 @@ export class MigrationsScripts {
   }
 
   public getAvailableMigrationsVersions(): number[] {
-    // TODO handle dudplicated versions
-    // filter((e, i, a) => a.indexOf(e) !== i)
-    const result = this.migrations.map((m) => {
+    this.checkDuplicatedVersions();
+    return this.getSortedVersions();
+  }
+
+  private checkDuplicatedVersions() {
+    if (this.getScriptsWithDuplicatedVersion().length) {
+      throw new Error(
+        `Duplicated Scripts for versions: ${this.getScriptsWithDuplicatedVersion()}`
+      );
+    }
+  }
+
+  private getScriptsWithDuplicatedVersion() {
+    return this.getVersions().filter((e, i, a) => a.indexOf(e) !== i);
+  }
+
+  private getVersions(): number[] {
+    return this.migrations.map((m) => {
       if (!m.version)
         throw new Error(
           `Migration Script: ${m.constructor.name} must have a 'version' attribute!`
         );
       return m.version;
     });
+  }
+
+  private getSortedVersions(): number[] {
     const numericCompare = (a, b) => a - b;
-    return result.sort(numericCompare);
+    return this.getVersions().sort(numericCompare);
   }
 
   public async runMigration(migrationToRun: number): Promise<any> {
     try {
       this.logger.log(`Migration script ${migrationToRun} run start.`);
-      await this.migrations
-        .filter((m) => m.version === migrationToRun)[0]
-        .run();
+      await this.migrations.find((m) => m.version === migrationToRun).run();
       this.logger.log(`Migration script ${migrationToRun} run finished.`);
     } catch (e: any) {
       this.logger.error(

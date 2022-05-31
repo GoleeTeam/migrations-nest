@@ -22,13 +22,20 @@ describe("MigrationsScripts", function () {
     run = migration4RunMock;
   }
 
-  const migrationScriptsFixture = [
+  const workingMigrationScriptsFixture = [
     new MigrationScript4Fixture(),
     new MigrationScript2Fixture(),
     new MigrationScript1Fixture(),
   ];
 
-  beforeEach(async () => {
+  const duplicatedMigrationScriptsFixture = [
+    new MigrationScript2Fixture(),
+    new MigrationScript2Fixture(),
+    new MigrationScript1Fixture(),
+    new MigrationScript1Fixture(),
+  ];
+
+  async function createMigrationModule(migrationScriptsFixture) {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         {
@@ -41,42 +48,59 @@ describe("MigrationsScripts", function () {
     }).compile();
 
     service = module.get<MigrationsScripts>(MigrationsScripts);
-  });
+  }
 
   afterEach(() => {
     jest.clearAllMocks();
     jest.resetAllMocks();
   });
 
-  describe("getAvailableMigrations", function () {
-    it("should return an array of the same length of the migrations scripts passed in constructor", function () {
-      expect(service.getAvailableMigrationsVersions().length).toEqual(
-        migrationScriptsFixture.length
-      );
+  describe("with proper migration scripts", function () {
+    beforeEach(async () => {
+      await createMigrationModule(workingMigrationScriptsFixture);
     });
-    it("should return a sorted array that maps script versions value", function () {
-      expect(service.getAvailableMigrationsVersions()).toEqual([1, 2, 4]);
+    describe("getAvailableMigrations", function () {
+      it("should return an array of the same length of the migrations scripts passed in constructor", function () {
+        expect(service.getAvailableMigrationsVersions().length).toEqual(
+          workingMigrationScriptsFixture.length
+        );
+      });
+      it("should return a sorted array that maps script versions value", function () {
+        expect(service.getAvailableMigrationsVersions()).toEqual([1, 2, 4]);
+      });
+      it("should fail if there are migrations with the same version number", function () {});
+    });
+
+    describe("runMigration", function () {
+      it("should run migration 1 and not the others", async function () {
+        await service.runMigration(1);
+        expect(migration1RunMock).toHaveBeenCalledTimes(1);
+        expect(migration2RunMock).not.toHaveBeenCalled();
+        expect(migration4RunMock).not.toHaveBeenCalled();
+      });
+      it("should run migration 2 and not the others", async function () {
+        await service.runMigration(2);
+        expect(migration2RunMock).toHaveBeenCalledTimes(1);
+        expect(migration1RunMock).not.toHaveBeenCalled();
+        expect(migration4RunMock).not.toHaveBeenCalled();
+      });
+      it("should run migration 4 and not the others", async function () {
+        await service.runMigration(4);
+        expect(migration4RunMock).toHaveBeenCalledTimes(1);
+        expect(migration1RunMock).not.toHaveBeenCalled();
+        expect(migration2RunMock).not.toHaveBeenCalled();
+      });
     });
   });
 
-  describe("runMigration", function () {
-    it("should run migration 1 and not the others", async function () {
-      await service.runMigration(1);
-      expect(migration1RunMock).toHaveBeenCalledTimes(1);
-      expect(migration2RunMock).not.toHaveBeenCalled();
-      expect(migration4RunMock).not.toHaveBeenCalled();
+  describe("with duplicated migration scripts", function () {
+    beforeEach(async () => {
+      await createMigrationModule(duplicatedMigrationScriptsFixture);
     });
-    it("should run migration 2 and not the others", async function () {
-      await service.runMigration(2);
-      expect(migration2RunMock).toHaveBeenCalledTimes(1);
-      expect(migration1RunMock).not.toHaveBeenCalled();
-      expect(migration4RunMock).not.toHaveBeenCalled();
-    });
-    it("should run migration 4 and not the others", async function () {
-      await service.runMigration(4);
-      expect(migration4RunMock).toHaveBeenCalledTimes(1);
-      expect(migration1RunMock).not.toHaveBeenCalled();
-      expect(migration2RunMock).not.toHaveBeenCalled();
+    describe("getAvailableMigrations", function () {
+      it("should fail if there are migrations with the same version number", function () {
+        expect(() => service.getAvailableMigrationsVersions()).toThrow();
+      });
     });
   });
 });
