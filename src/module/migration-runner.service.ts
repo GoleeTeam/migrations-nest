@@ -31,30 +31,38 @@ export class MigrationsRunner implements OnModuleInit {
 
     const run_migrations = await this.getMigrationsToRun();
     this.logger.debug(`${run_migrations.length} migrations to run`);
-    const ok_migrations: any = [];
+    const ok_migrations: number[] = [];
     for (const migration of run_migrations) {
       try {
-        await this.migrationVersionRepo.saveMigrationLock(true);
-        await this.migrationsScripts.runMigration(migration);
-        await this.migrationVersionRepo.setCurrentVersion(migration);
-        await this.migrationVersionRepo.saveMigrationLock(false);
+        await this.runMigrationAndUpdateVersionRepo(migration);
         ok_migrations.push(migration);
-        await this.migrationVersionRepo.setLastRunCompleted(true);
-        await this.migrationVersionRepo.setLastRunError("");
       } catch (error: any) {
         this.logger.error(
           `Migration ${migration} failed no other migrations will be executed`
         );
         this.logger.error(error);
-        await this.migrationVersionRepo.saveMigrationLock(false);
-        await this.migrationVersionRepo.setLastRunCompleted(false);
-        await this.migrationVersionRepo.setLastRunError(
-          error.message || JSON.stringify(error)
-        );
+        await this.handleErrorAndUpdateVersionRepo(error);
         break;
       }
     }
     return ok_migrations;
+  }
+
+  private async runMigrationAndUpdateVersionRepo(migration: number) {
+    await this.migrationVersionRepo.saveMigrationLock(true);
+    await this.migrationsScripts.runMigration(migration);
+    await this.migrationVersionRepo.setCurrentVersion(migration);
+    await this.migrationVersionRepo.saveMigrationLock(false);
+    await this.migrationVersionRepo.setLastRunCompleted(true);
+    await this.migrationVersionRepo.setLastRunError("");
+  }
+
+  private async handleErrorAndUpdateVersionRepo(error: any) {
+    await this.migrationVersionRepo.saveMigrationLock(false);
+    await this.migrationVersionRepo.setLastRunCompleted(false);
+    await this.migrationVersionRepo.setLastRunError(
+      error.message || JSON.stringify(error)
+    );
   }
 
   private async getMigrationsToRun(): Promise<number[]> {
