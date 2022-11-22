@@ -46,13 +46,22 @@ export class MigrationsScripts {
   }
 
   public async runMigration(migrationToRun: number): Promise<any> {
+    const migrationScriptToRun = this.migrations.find(
+      (m) => m.version === migrationToRun
+    );
     try {
-      this.logger.log(`Migration script ${migrationToRun} run start.`);
-      await this.migrations.find((m) => m.version === migrationToRun).run();
-      this.logger.log(`Migration script ${migrationToRun} run finished.`);
+      this.logger.log(
+        `Migration script version: ${migrationScriptToRun.version} run start.`
+      );
+      await migrationScriptToRun.run();
+      this.logger.log(
+        `Migration script ${migrationScriptToRun.version} run finished.`
+      );
     } catch (e: any) {
       this.logger.error(
-        `Migration script ${migrationToRun} failed with ${e.message || e}`
+        `Migration script ${migrationScriptToRun.version} failed with ${
+          e.message || e
+        }`
       );
       throw e;
     }

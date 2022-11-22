@@ -16,10 +16,6 @@ describe("MigrationsRunner", () => {
   const setLastRunCompletedMock = jest.fn();
   const setLastRunErrorMock = jest.fn();
 
-  afterEach(() => {
-    jest.resetAllMocks();
-  });
-
   beforeEach(async () => {
     getAvailableMigrationMock.mockReturnValue([]);
 
@@ -55,6 +51,10 @@ describe("MigrationsRunner", () => {
     }).compile();
 
     service = module.get<MigrationsRunner>(MigrationsRunner);
+  });
+
+  afterEach(() => {
+    jest.resetAllMocks();
   });
 
   function givenAMigration() {
