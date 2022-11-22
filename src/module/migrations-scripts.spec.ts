@@ -17,8 +17,18 @@ describe("MigrationsScripts", function () {
     version = 2;
     run = migration2RunMock;
   }
+  class MigrationScript3Fixture implements IMigrationScript {
+    version = 3;
+    supportsConcurrency = true;
+    run = migration4RunMock;
+  }
   class MigrationScript4Fixture implements IMigrationScript {
     version = 4;
+    run = migration4RunMock;
+  }
+  class MigrationScript6Fixture implements IMigrationScript {
+    version = 6;
+    supportsConcurrency = true;
     run = migration4RunMock;
   }
 
@@ -32,6 +42,13 @@ describe("MigrationsScripts", function () {
     new MigrationScript2Fixture(),
     new MigrationScript2Fixture(),
     new MigrationScript1Fixture(),
+    new MigrationScript1Fixture(),
+  ];
+
+  const migrationsWithConcurrencyFixture = [
+    new MigrationScript6Fixture(),
+    new MigrationScript2Fixture(),
+    new MigrationScript3Fixture(),
     new MigrationScript1Fixture(),
   ];
 
@@ -69,6 +86,17 @@ describe("MigrationsScripts", function () {
         expect(service.getAvailableMigrationsVersions()).toEqual([1, 2, 4]);
       });
       it("should fail if there are migrations with the same version number", function () {});
+    });
+
+    describe("getAvailableConcurrentMigrations", function () {
+      beforeEach(async () => {
+        await createMigrationModule(migrationsWithConcurrencyFixture);
+      });
+      it("should return and array with only migrations that support concurrency", function () {
+        expect(service.getAvailableConcurrentMigrationsVersions()).toEqual([
+          3, 6,
+        ]);
+      });
     });
 
     describe("runMigration", function () {

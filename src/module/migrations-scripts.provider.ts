@@ -30,6 +30,11 @@ export class MigrationsScripts {
     return this.getVersions().filter((e, i, a) => a.indexOf(e) !== i);
   }
 
+  private getSortedVersions(): number[] {
+    const numericCompare = (a, b) => a - b;
+    return this.getVersions().sort(numericCompare);
+  }
+
   private getVersions(): number[] {
     return this.migrations.map((m) => {
       if (!m.version)
@@ -40,9 +45,19 @@ export class MigrationsScripts {
     });
   }
 
-  private getSortedVersions(): number[] {
-    const numericCompare = (a, b) => a - b;
-    return this.getVersions().sort(numericCompare);
+  public getAvailableConcurrentMigrationsVersions(): number[] {
+    return this.filterMigrationsThatSupportConcurrency(
+      this.getAvailableMigrationsVersions()
+    );
+  }
+
+  private filterMigrationsThatSupportConcurrency(
+    availableMigrations: number[]
+  ) {
+    return availableMigrations.filter((version) => {
+      return this.migrations.find((m) => m.version === version)
+        .supportsConcurrency;
+    });
   }
 
   public async runMigration(migrationToRun: number): Promise<any> {

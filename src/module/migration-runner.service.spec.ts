@@ -7,6 +7,7 @@ import { MigrationVersionRepo } from "./schemas/migration-version.repo";
 describe("MigrationsRunner", () => {
   let service: MigrationsRunner;
   const getAvailableMigrationMock = jest.fn();
+  const getAvailableConcurrentMigrationsMock = jest.fn();
   const scriptRunMigrationMock = jest.fn();
 
   const getCurrentVersionMock = jest.fn();
@@ -33,6 +34,8 @@ describe("MigrationsRunner", () => {
           provide: MigrationsScripts,
           useValue: {
             getAvailableMigrationsVersions: getAvailableMigrationMock,
+            getAvailableConcurrentMigrationsVersions:
+              getAvailableConcurrentMigrationsMock,
             runMigration: scriptRunMigrationMock,
           },
         },
@@ -149,12 +152,36 @@ describe("MigrationsRunner", () => {
     });
 
     describe("Given a running (locked) migration", function () {
+      function givenMigrationsLocked() {
+        getAvailableMigrationMock.mockReturnValue([1, 2, 3]);
+        getCurrentVersionMock.mockResolvedValue(1);
+        getMigrationLock.mockResolvedValue(true);
+      }
+
+      beforeEach(function () {
+        givenMigrationsLocked();
+      });
+
       it("should not run a migration if another process is already running migration", async () => {
-        givenAMigration();
-        getMigrationLock.mockResolvedValue(1);
+        getAvailableConcurrentMigrationsMock.mockReturnValue([]);
 
         await service.runMigrations();
         expect(scriptRunMigrationMock).not.toBeCalled();
+      });
+
+      it("should get available migrations that support concurrent execution", async function () {
+        getAvailableConcurrentMigrationsMock.mockReturnValue([1, 2, 3]);
+
+        await service.runMigrations();
+        expect(getAvailableMigrationMock).not.toBeCalled();
+        expect(getAvailableConcurrentMigrationsMock).toBeCalled();
+      });
+
+      it("should run only the current migration if it supports concurrency", async function () {
+        getAvailableConcurrentMigrationsMock.mockReturnValue([1, 2, 3]);
+
+        await service.runMigrations();
+        expect(scriptRunMigrationMock).toBeCalledTimes(1);
       });
     });
   });

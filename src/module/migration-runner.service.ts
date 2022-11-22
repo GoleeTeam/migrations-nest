@@ -21,16 +21,9 @@ export class MigrationsRunner implements OnModuleInit {
   }
 
   public async runMigrations(): Promise<number[]> {
-    const lock = await this.migrationVersionRepo.getMigrationLock();
-    if (lock) {
-      this.logger.error(
-        "Migration db locked, is a migration still in progress?"
-      );
-      return [];
-    }
-
     const run_migrations = await this.getMigrationsToRun();
     this.logger.debug(`${run_migrations.length} migrations to run`);
+
     const ok_migrations: number[] = [];
     for (const migration of run_migrations) {
       try {
@@ -68,8 +61,28 @@ export class MigrationsRunner implements OnModuleInit {
   private async getMigrationsToRun(): Promise<number[]> {
     const current_version: number =
       await this.migrationVersionRepo.getCurrentVersion();
-    return this.migrationsScripts
-      .getAvailableMigrationsVersions()
-      .filter((m) => m > current_version);
+
+    const lock = await this.migrationVersionRepo.getMigrationLock();
+    if (lock) {
+      this.logger.warn("Migration db locked, migration is still in progress?");
+      const availableConcurrentMigrations =
+        this.migrationsScripts.getAvailableConcurrentMigrationsVersions();
+
+      return onlyCurrentMigration(availableConcurrentMigrations);
+    } else {
+      return migrationWithHigherVersion(
+        this.migrationsScripts.getAvailableMigrationsVersions()
+      );
+    }
+
+    function migrationWithHigherVersion(availableMigrations: number[]) {
+      return availableMigrations.filter((m) => m > current_version);
+    }
+
+    function onlyCurrentMigration(availableConcurrentMigrations: number[]) {
+      return availableConcurrentMigrations.filter(
+        (m) => m === current_version + 1
+      );
+    }
   }
 }
