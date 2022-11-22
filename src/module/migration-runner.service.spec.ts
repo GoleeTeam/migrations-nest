@@ -63,98 +63,99 @@ describe("MigrationsRunner", () => {
   }
 
   describe("runMigrations", function () {
-    it("should run no migration", async () => {
-      getAvailableMigrationMock.mockReturnValue([]);
-      getCurrentVersionMock.mockResolvedValue(undefined);
+    describe("Given no migration", function () {
+      it("should run no scripts", async () => {
+        getAvailableMigrationMock.mockReturnValue([]);
+        getCurrentVersionMock.mockResolvedValue(undefined);
 
-      const expected_migrations_run = [];
-      expect(await service.runMigrations()).toEqual(expected_migrations_run);
+        const expected_migrations_run = [];
+        expect(await service.runMigrations()).toEqual(expected_migrations_run);
+      });
     });
 
-    it("should run one migration and skip one", async () => {
-      getAvailableMigrationMock.mockReturnValue([1, 2, 3, 4]);
-      getCurrentVersionMock.mockResolvedValue(2);
+    describe("Given one migration", function () {
+      beforeEach(function () {
+        givenAMigration();
+      });
 
-      const expected_migrations_run = [3, 4];
-      expect(await service.runMigrations()).toEqual(expected_migrations_run);
+      it("should run one migration", async () => {
+        await service.runMigrations();
+        expect(scriptRunMigrationMock).toBeCalledWith(1);
+      });
+
+      it("should run one migration and increase current version", async () => {
+        expect(await service.runMigrations()).toEqual([1]);
+        expect(setCurrentVersionMock).toBeCalledWith(1);
+      });
+
+      it("should not increase current varsion in case of failure", async () => {
+        scriptRunMigrationMock.mockRejectedValue(new Error("Script failed"));
+
+        expect(await service.runMigrations()).toEqual([]);
+        expect(setCurrentVersionMock).toBeCalledTimes(0);
+      });
+
+      it("should set last run completed to true in case of success", async () => {
+        await service.runMigrations();
+        expect(setLastRunCompletedMock).toBeCalledWith(true);
+      });
+
+      it("should set last error as empty in case of failure", async () => {
+        await service.runMigrations();
+        expect(setLastRunErrorMock).toBeCalledWith("");
+      });
+
+      it("should set last run completed to false in case of failure", async () => {
+        scriptRunMigrationMock.mockRejectedValue(new Error("Script failed"));
+
+        expect(await service.runMigrations()).toEqual([]);
+        expect(setLastRunCompletedMock).toBeCalledWith(false);
+      });
+
+      it("should set last error in case of failure", async () => {
+        scriptRunMigrationMock.mockRejectedValue(new Error("Script failed"));
+
+        expect(await service.runMigrations()).toEqual([]);
+        expect(setLastRunErrorMock).toBeCalledWith("Script failed");
+      });
     });
 
-    it("should run one migration", async () => {
-      givenAMigration();
+    describe("Given multiple migrations", function () {
+      it("should run one migration and skip one", async () => {
+        getAvailableMigrationMock.mockReturnValue([1, 2, 3, 4]);
+        getCurrentVersionMock.mockResolvedValue(2);
 
-      await service.runMigrations();
-      expect(scriptRunMigrationMock).toBeCalledWith(1);
+        const expected_migrations_run = [3, 4];
+        expect(await service.runMigrations()).toEqual(expected_migrations_run);
+      });
+
+      it("should run multiple migrations", async () => {
+        getAvailableMigrationMock.mockReturnValue([1, 2]);
+        getCurrentVersionMock.mockResolvedValue(0);
+
+        await service.runMigrations();
+        expect(scriptRunMigrationMock).toBeCalledWith(1);
+        expect(scriptRunMigrationMock).toBeCalledWith(2);
+      });
+
+      it("should not run other migration if one fails", async () => {
+        getAvailableMigrationMock.mockReturnValue([1, 2]);
+        getCurrentVersionMock.mockResolvedValue(0);
+        scriptRunMigrationMock.mockRejectedValue(new Error("Script failed"));
+
+        expect(await service.runMigrations()).toEqual([]);
+        expect(scriptRunMigrationMock).toBeCalledTimes(1);
+      });
     });
 
-    it("should run multiple migrations", async () => {
-      getAvailableMigrationMock.mockReturnValue([1, 2]);
-      getCurrentVersionMock.mockResolvedValue(0);
+    describe("Given a running (locked) migration", function () {
+      it("should not run a migration if another process is already running migration", async () => {
+        givenAMigration();
+        getMigrationLock.mockResolvedValue(1);
 
-      await service.runMigrations();
-      expect(scriptRunMigrationMock).toBeCalledWith(1);
-      expect(scriptRunMigrationMock).toBeCalledWith(2);
-    });
-
-    it("should run one migration and increase current version", async () => {
-      givenAMigration();
-
-      expect(await service.runMigrations()).toEqual([1]);
-      expect(setCurrentVersionMock).toBeCalledWith(1);
-    });
-
-    it("should not increase current varsion in case of failure", async () => {
-      givenAMigration();
-      scriptRunMigrationMock.mockRejectedValue(new Error("Script failed"));
-
-      expect(await service.runMigrations()).toEqual([]);
-      expect(setCurrentVersionMock).toBeCalledTimes(0);
-    });
-
-    it("should not run other migration if one fails", async () => {
-      getAvailableMigrationMock.mockReturnValue([1, 2]);
-      getCurrentVersionMock.mockResolvedValue(0);
-      scriptRunMigrationMock.mockRejectedValue(new Error("Script failed"));
-
-      expect(await service.runMigrations()).toEqual([]);
-      expect(scriptRunMigrationMock).toBeCalledTimes(1);
-    });
-
-    it("should not run a migration if another process is already running migration", async () => {
-      givenAMigration();
-      getMigrationLock.mockResolvedValue(1);
-
-      await service.runMigrations();
-      expect(scriptRunMigrationMock).not.toBeCalled();
-    });
-
-    it("should set last run completed to false in case of failure", async () => {
-      givenAMigration();
-      scriptRunMigrationMock.mockRejectedValue(new Error("Script failed"));
-
-      expect(await service.runMigrations()).toEqual([]);
-      expect(setLastRunCompletedMock).toBeCalledWith(false);
-    });
-
-    it("should set last error in case of failure", async () => {
-      givenAMigration();
-      scriptRunMigrationMock.mockRejectedValue(new Error("Script failed"));
-
-      expect(await service.runMigrations()).toEqual([]);
-      expect(setLastRunErrorMock).toBeCalledWith("Script failed");
-    });
-
-    it("should set last run completed to true in case of success", async () => {
-      givenAMigration();
-
-      await service.runMigrations();
-      expect(setLastRunCompletedMock).toBeCalledWith(true);
-    });
-
-    it("should set last error as empty in case of failure", async () => {
-      givenAMigration();
-
-      await service.runMigrations();
-      expect(setLastRunErrorMock).toBeCalledWith("");
+        await service.runMigrations();
+        expect(scriptRunMigrationMock).not.toBeCalled();
+      });
     });
   });
 });
