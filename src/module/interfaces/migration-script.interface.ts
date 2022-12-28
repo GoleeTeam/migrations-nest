@@ -1,5 +1,5 @@
 export interface IMigrationScript {
   version: number;
   supportsConcurrency?: boolean;
-  run: () => Promise<void>;
+  run(): Promise<void>;
 }
