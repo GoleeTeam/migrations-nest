@@ -1,6 +1,6 @@
 {
   "name": "@golee/migrations-nest",
-  "version": "0.7.4",
+  "version": "0.8.1",
   "description": "",
   "main": "dist/index",
   "types": "dist/index",
