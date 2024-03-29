@@ -1,6 +1,6 @@
 {
   "name": "@golee/migrations-nest",
-  "version": "0.8.2",
+  "version": "0.8.1",
   "description": "",
   "main": "dist/index",
   "types": "dist/index",
@@ -28,7 +28,7 @@
     "mongoose": "^6.0.2 || ^7.0.0 || ^8.0.0"
   },
   "dependencies": {
-    "reflect-metadata": "^0.2.1",
+    "reflect-metadata": "^0.1.13",
     "rxjs": "^7.5.2"
   },
   "devDependencies": {
