@@ -4,7 +4,7 @@ Below an example of how to configure two migrations scripts (order matters) and 
 
 ```TypeScript
 MigrationsModule.forRoot({
-	mongodb_url: process.env.MONGODB_URL!,
+    mongoDbConnectionName: 'monogoose_connection_name', // If not specified will use the default connection
 	scripts: [
 		{
 			provide: 'MigrationExample1',
