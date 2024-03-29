@@ -2,8 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { IMigrationScript } from './interfaces/migration-script.interface';
 
 @Injectable()
-export class MigrationsScripts {
-    private readonly logger = new Logger(MigrationsScripts.name);
+export class MigrationsScriptsProvider {
+    private readonly logger = new Logger(MigrationsScriptsProvider.name);
 
     constructor(private readonly migrations: IMigrationScript[]) {
         this.logger.debug(`Available migrations: ${this.migrations.map((m) => m.constructor.name).join(', ')}`);

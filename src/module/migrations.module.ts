@@ -1,16 +1,16 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MigrationsOptions } from './options';
-import { MigrationVersion, MigrationVersionSchema } from './schemas/migration-version.schema';
+import { MigrationVersion, MigrationVersionSchema } from './repo/migration-version.schema';
 import { MigrationsRunner } from './migration-runner.service';
-import { MigrationsScripts } from './migrations-scripts.provider';
-import { MigrationVersionRepo } from './schemas/migration-version.repo';
+import { MigrationsScriptsProvider } from './migrations-scripts.provider';
+import { MigrationVersionRepo } from './repo/migration-version.repo';
 
 export const MigrationScriptFactory = (options: Pick<MigrationsOptions, 'scripts'>) => {
     return {
-        provide: MigrationsScripts,
+        provide: MigrationsScriptsProvider,
         useFactory: (...args: any[]) => {
-            return new MigrationsScripts(args);
+            return new MigrationsScriptsProvider(args);
         },
         inject: options.scripts.map((s) => s.provide),
     };

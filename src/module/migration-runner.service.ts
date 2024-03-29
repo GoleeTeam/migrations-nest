@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { MigrationsScripts } from './migrations-scripts.provider';
-import { MigrationVersionRepo } from './schemas/migration-version.repo';
+import { MigrationsScriptsProvider } from './migrations-scripts.provider';
+import { MigrationVersionRepo } from './repo/migration-version.repo';
 
 @Injectable()
 export class MigrationsRunner implements OnModuleInit {
@@ -8,12 +8,12 @@ export class MigrationsRunner implements OnModuleInit {
 
     constructor(
         private migrationVersionRepo: MigrationVersionRepo,
-        private migrationsScripts: MigrationsScripts,
+        private migrationsScripts: MigrationsScriptsProvider,
     ) {}
 
     async onModuleInit() {
         try {
-            this.runMigrations(); // this is intended not to be awaited in order to not block app bootstrap
+            void this.runMigrations(); // this is intended not to be awaited in order to not block app bootstrap
         } catch (e: any) {
             this.logger.error(`Unexpected migration error: ${e?.message || e}`);
             this.logger.error(e);

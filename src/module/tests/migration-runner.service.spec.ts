@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { MigrationsRunner } from './migration-runner.service';
+import { MigrationsRunner } from '../migration-runner.service';
 import { getModelToken } from '@nestjs/mongoose';
-import { MigrationsScripts } from './migrations-scripts.provider';
-import { MigrationVersionRepo } from './schemas/migration-version.repo';
+import { MigrationsScriptsProvider } from '../migrations-scripts.provider';
+import { MigrationVersionRepo } from '../repo/migration-version.repo';
 
 describe('MigrationsRunner', () => {
     let service: MigrationsRunner;
@@ -31,7 +31,7 @@ describe('MigrationsRunner', () => {
                     },
                 },
                 {
-                    provide: MigrationsScripts,
+                    provide: MigrationsScriptsProvider,
                     useValue: {
                         getAvailableMigrationsVersions: getAvailableMigrationMock,
                         getAvailableConcurrentMigrationsVersions: getAvailableConcurrentMigrationsMock,

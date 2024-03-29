@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { MigrationsScripts } from './migrations-scripts.provider';
-import { IMigrationScript } from './interfaces/migration-script.interface';
+import { MigrationsScriptsProvider } from '../migrations-scripts.provider';
+import { IMigrationScript } from '../interfaces/migration-script.interface';
 
 describe('MigrationsScripts', function () {
-    let service: MigrationsScripts;
+    let service: MigrationsScriptsProvider;
 
     const migration1RunMock = jest.fn();
     const migration2RunMock = jest.fn();
@@ -56,15 +56,15 @@ describe('MigrationsScripts', function () {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 {
-                    provide: MigrationsScripts,
+                    provide: MigrationsScriptsProvider,
                     useFactory: () => {
-                        return new MigrationsScripts(migrationScriptsFixture);
+                        return new MigrationsScriptsProvider(migrationScriptsFixture);
                     },
                 },
             ],
         }).compile();
 
-        service = module.get<MigrationsScripts>(MigrationsScripts);
+        service = module.get<MigrationsScriptsProvider>(MigrationsScriptsProvider);
     }
 
     afterEach(() => {
