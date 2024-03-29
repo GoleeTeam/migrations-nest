@@ -1,11 +1,11 @@
-import { paginate } from "../..";
-import { IMigrationScript } from "./migration-script.interface";
+import { IMigrationScript } from './migration-script.interface';
+import { paginate } from './paginate';
 
 export abstract class MigrationScript implements IMigrationScript {
-  version: number;
-  supportsConcurrency?: boolean;
+    abstract version: number;
+    supportsConcurrency? = false;
 
-  abstract run(): Promise<void>;
+    abstract run(): Promise<void>;
 
-  protected paginate = paginate;
+    protected paginate = paginate;
 }

@@ -1,12 +1,9 @@
-import { DynamicModule, ForwardReference, Type } from "@nestjs/common";
+import { ModuleMetadata } from '@nestjs/common';
+import { FactoryProvider } from '@nestjs/common/interfaces/modules/provider.interface';
 
-export type IExternalOptions = {
-  mongodb_url: string;
-  imports: (
-    | DynamicModule
-    | Type<any>
-    | Promise<DynamicModule>
-    | ForwardReference<any>
-  )[];
-  scripts: any[];
+export type MigrationsOptions = Pick<ModuleMetadata, 'imports'> & {
+    mongoDbConnectionName?: string;
+    scripts: ScriptProvider[];
 };
+
+type ScriptProvider = Pick<FactoryProvider, 'useFactory' | 'provide' | 'inject'>;
