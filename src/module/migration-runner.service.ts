@@ -12,12 +12,10 @@ export class MigrationsRunner implements OnModuleInit {
     ) {}
 
     async onModuleInit() {
-        try {
-            void this.runMigrations(); // this is intended not to be awaited in order to not block app bootstrap
-        } catch (e: any) {
+        this.runMigrations().catch((e) => {
             this.logger.error(`Unexpected migration error: ${e?.message || e}`);
             this.logger.error(e);
-        }
+        }); // this is intended not to be awaited in order to not block app bootstrap
     }
 
     public async runMigrations(): Promise<number[]> {
