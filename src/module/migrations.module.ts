@@ -3,6 +3,7 @@ import { MigrationsOptions } from './options';
 import { MigrationsRunner } from './migration-runner.service';
 import { MigrationsScriptsProvider } from './migrations-scripts.provider';
 import { MigrationVersionRepo } from './repo/migration-version.repo';
+import { MongoClient } from 'mongodb';
 
 export const MigrationScriptFactory = (options: Pick<MigrationsOptions, 'scripts'>) => {
     return {
@@ -14,12 +15,27 @@ export const MigrationScriptFactory = (options: Pick<MigrationsOptions, 'scripts
     };
 };
 
+const MigrationVersionRepoFactory = (options: Pick<MigrationsOptions, 'mongoClientToken' | 'collectionName'>) => {
+    return {
+        provide: MigrationVersionRepo,
+        useFactory: (mongoClient: MongoClient) => {
+            return new MigrationVersionRepo(mongoClient, options.collectionName);
+        },
+        inject: [options.mongoClientToken],
+    };
+};
+
 @Module({})
 export class MigrationsModule {
     private static MIGRATIONS_MODULE_OPTIONS_TOKEN = 'MIGRATIONS_MODULE_OPTIONS';
 
     static forRoot(options: MigrationsOptions): DynamicModule {
-        const providers = [MigrationsRunner, MigrationVersionRepo, ...options.scripts, MigrationScriptFactory(options)];
+        const providers = [
+            MigrationsRunner,
+            MigrationVersionRepoFactory(options),
+            ...options.scripts,
+            MigrationScriptFactory(options),
+        ];
         return {
             imports: [...(options.imports || [])],
             providers: providers as any,

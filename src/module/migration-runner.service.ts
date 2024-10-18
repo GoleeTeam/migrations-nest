@@ -12,6 +12,7 @@ export class MigrationsRunner implements OnModuleInit {
     ) {}
 
     async onModuleInit() {
+        await this.migrationVersionRepo.init();
         this.runMigrations().catch((e) => {
             this.logger.error(`Unexpected migration error: ${e?.message || e}`);
             this.logger.error(e);

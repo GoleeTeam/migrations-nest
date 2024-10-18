@@ -12,8 +12,8 @@ export class MigrationVersion {
 export class MigrationVersionRepo {
     private collection: Collection<MigrationVersion>;
 
-    constructor(mongoClient: MongoClient) {
-        this.collection = mongoClient.db().collection<MigrationVersion>('migration_version');
+    constructor(mongoClient: MongoClient, collectionName = 'migrations_version') {
+        this.collection = mongoClient.db().collection<MigrationVersion>(collectionName);
     }
 
     public async init() {

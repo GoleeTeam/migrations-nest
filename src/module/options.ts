@@ -1,10 +1,9 @@
 import { ModuleMetadata } from '@nestjs/common';
 import { FactoryProvider } from '@nestjs/common/interfaces/modules/provider.interface';
-import { MongoClient } from 'mongodb';
 
 export type MigrationsOptions = Pick<ModuleMetadata, 'imports'> & {
-    mongoConn: MongoClient;
-    collectionName?: string; // TODO implement custom collection name
+    mongoClientToken: string; // TODO implement a compatible way to be used with mongoose
+    collectionName?: string; // default is migrations_version
     scripts: ScriptProvider[];
 };
 
