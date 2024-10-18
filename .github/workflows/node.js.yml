@@ -26,8 +26,6 @@ jobs:
       - name: Install peer dependencies
         run: npm i @nestjs/common@${{ matrix.nest-version }} @nestjs/core@${{ matrix.nest-version }} @nestjs/testing@${{ matrix.nest-version }}
 
-      - name: Install mongoose
-        run: npm i --force @nestjs/mongoose@10.0.4 mongoose@8
       - name: Install dependencies
         run: npm ci
 

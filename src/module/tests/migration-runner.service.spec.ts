@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MigrationsRunner } from '../migration-runner.service';
-import { getModelToken } from '@nestjs/mongoose';
 import { MigrationsScriptsProvider } from '../migrations-scripts.provider';
 import { MigrationVersionRepo } from '../repo/migration-version.repo';
 
@@ -24,7 +23,7 @@ describe('MigrationsRunner', () => {
             providers: [
                 MigrationsRunner,
                 {
-                    provide: getModelToken('MigrationVersion'),
+                    provide: MigrationVersionRepo,
                     useValue: {
                         findOne: jest.fn(),
                         updateOne: jest.fn(),

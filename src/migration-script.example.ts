@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MigrationScript } from './module/interfaces/migration-script.abstract';
 import { MigrationsModule } from './module/migrations.module';
+import { MongoClient } from 'mongodb';
 
 @Injectable()
 export class MigrationsScriptExample extends MigrationScript {
@@ -20,6 +21,7 @@ export class MigrationsScriptExample extends MigrationScript {
 
 // Example of how to use MigrationsModule in your application
 MigrationsModule.forRoot({
+    mongoConn: new MongoClient('mongodb://localhost:27017'), // you can get the mongo client from an existing connection (also from mongoose)
     imports: [],
     scripts: [
         {

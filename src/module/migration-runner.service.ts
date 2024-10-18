@@ -55,6 +55,7 @@ export class MigrationsRunner implements OnModuleInit {
     private async getMigrationsToRun(): Promise<number[]> {
         const current_version: number = await this.migrationVersionRepo.getCurrentVersion();
 
+        // FIXME locking is not thread safe, it should be done in a transaction
         const lock = await this.migrationVersionRepo.getMigrationLock();
         if (lock) {
             this.logger.warn('Migration db locked, migration is still in progress?');
