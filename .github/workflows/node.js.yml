@@ -12,18 +12,22 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [ 16.x, 18.x, 20.x ]
-        nest-version: [ ^8.0.0, ^10.0.0 ]
+        node-version: [ 18.x, 20.x ]
+        nest-version: [ ^9.0.0, ^10.0.0 ]
         mongo-version: [ ^4.0.0, ^5.0.0, ^6.0.0 ]
     name: Node ${{ matrix.node-version }} - Nest ${{ matrix.nest-version }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: latest
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          cache: "pnpm"
           node-version: ${{ matrix.node-version }}
+          cache: "pnpm"
 
       - name: Install peer dependencies
         run: pnpm add @nestjs/common@${{ matrix.nest-version }} @nestjs/core@${{ matrix.nest-version }} @nestjs/testing@${{ matrix.nest-version }} mongodb@${{ matrix.mongo-version }}
