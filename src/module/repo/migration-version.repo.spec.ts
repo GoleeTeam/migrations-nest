@@ -20,7 +20,7 @@ describe('MigrationVersionRepo', () => {
             providers: [{ provide: MigrationVersionRepo, useFactory: () => new MigrationVersionRepo(mongoClient) }],
         }).compile();
 
-        collection = mongoClient.db().collection<MigrationVersion>('migration_version');
+        collection = mongoClient.db().collection<MigrationVersion>('migrations_version');
         repo = module.get<MigrationVersionRepo>(MigrationVersionRepo);
     });
 
