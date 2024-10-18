@@ -14,23 +14,25 @@ jobs:
       matrix:
         node-version: [ 16.x, 18.x, 20.x ]
         nest-version: [ ^8.0.0, ^10.0.0 ]
+        mongo-version: [ ^4.0.0, ^5.0.0, ^6.0.0 ]
     name: Node ${{ matrix.node-version }} - Nest ${{ matrix.nest-version }}
     steps:
       - uses: actions/checkout@v3
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
+          cache: "pnpm"
           node-version: ${{ matrix.node-version }}
 
       - name: Install peer dependencies
-        run: npm i @nestjs/common@${{ matrix.nest-version }} @nestjs/core@${{ matrix.nest-version }} @nestjs/testing@${{ matrix.nest-version }}
+        run: pnpm add @nestjs/common@${{ matrix.nest-version }} @nestjs/core@${{ matrix.nest-version }} @nestjs/testing@${{ matrix.nest-version }} mongodb@${{ matrix.mongo-version }}
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       - name: Test
-        run: npm run test
+        run: pnpm run test
