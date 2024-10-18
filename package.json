@@ -1,9 +1,17 @@
 {
     "name": "@golee/migrations-nest",
     "version": "2.0.1",
-    "description": "",
+    "description": "Simple database migration tools for mongodb and NestJS",
+    "author": "Golee Team <dev@golee.it>",
+    "license": "Apache-2.0",
     "main": "dist/index",
     "types": "dist/index",
+    "keywords": [
+        "nest",
+        "mongodb",
+        "mongo",
+        "migrations"
+    ],
     "scripts": {
         "test": "jest",
         "build": "rimraf dist && tsc --project tsconfig.build.json",
@@ -15,8 +23,6 @@
         "type": "git",
         "url": "git+https://github.com/GoleeTeam/migrations-nest.git"
     },
-    "author": "",
-    "license": "Apache-2.0",
     "bugs": {
         "url": "https://github.com/GoleeTeam/migrations-nest/issues"
     },
