@@ -16,7 +16,7 @@
         "test": "jest",
         "build": "rimraf dist && tsc --project tsconfig.build.json",
         "check": "cspell lint --quiet src",
-        "prepare": "husky install",
+        "prepare": "husky",
         "prepublish": "npm run build"
     },
     "repository": {
