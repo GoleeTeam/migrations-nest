@@ -17,7 +17,8 @@
         "build": "rimraf dist && tsc --project tsconfig.build.json",
         "check": "cspell lint --quiet src",
         "prepare": "husky",
-        "prepublish": "npm run build"
+        "prepublish": "npm run build",
+        "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix"
     },
     "repository": {
         "type": "git",
