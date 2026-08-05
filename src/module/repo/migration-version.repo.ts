@@ -12,7 +12,7 @@ export class MigrationVersion {
 export class MigrationVersionRepo {
     private collection: Collection<MigrationVersion>;
 
-    constructor(mongoClient: MongoClient, collectionName = 'migrations_version') {
+    constructor(mongoClient: MongoClient, collectionName: string) {
         this.collection = mongoClient.db().collection<MigrationVersion>(collectionName);
     }
 

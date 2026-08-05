@@ -21,6 +21,7 @@ export class MigrationsScriptExample extends MigrationScript {
 // Example of how to use MigrationsModule in your application
 MigrationsModule.forRoot({
     mongoClientToken: getMongoToken(),
+    collectionName: 'migrations_version',
     imports: [],
     scripts: [
         {

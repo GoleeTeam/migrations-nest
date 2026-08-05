@@ -17,7 +17,12 @@ describe('MigrationVersionRepo', () => {
         await mongoClient.connect();
 
         module = await Test.createTestingModule({
-            providers: [{ provide: MigrationVersionRepo, useFactory: () => new MigrationVersionRepo(mongoClient) }],
+            providers: [
+                {
+                    provide: MigrationVersionRepo,
+                    useFactory: () => new MigrationVersionRepo(mongoClient, 'migrations_version'),
+                },
+            ],
         }).compile();
 
         collection = mongoClient.db().collection<MigrationVersion>('migrations_version');
