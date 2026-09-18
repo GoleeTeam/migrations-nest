@@ -12,7 +12,9 @@ export class MigrationsScriptExample extends MigrationScript {
     }
 
     public async run(): Promise<void> {
+        // eslint-disable-next-line no-console
         console.log(`Migration script example executed on environment: ${this.configService.get('ENV_NAME')}`);
+        // eslint-disable-next-line no-console
         console.log('Migration script example executed!');
         return;
     }
