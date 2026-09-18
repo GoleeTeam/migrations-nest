@@ -20,45 +20,45 @@ export class MigrationsRunner implements OnModuleInit {
     }
 
     public async runMigrations(): Promise<number[]> {
-        const run_migrations = await this.getMigrationsToRun();
-        this.logger.debug(`${run_migrations.length} migrations to run`);
+        const acquiredLock = await this.migrationVersionRepo.tryAcquireLock();
+        try {
+            const run_migrations = await this.getMigrationsToRun(acquiredLock);
+            this.logger.debug(`${run_migrations.length} migrations to run`);
 
-        const ok_migrations: number[] = [];
-        for (const migration of run_migrations) {
-            try {
-                await this.runMigrationAndUpdateVersionRepo(migration);
-                ok_migrations.push(migration);
-            } catch (error: any) {
-                this.logger.error(`Migration ${migration} failed no other migrations will be executed`);
-                this.logger.error(error);
-                await this.handleErrorAndUpdateVersionRepo(error);
-                break;
+            const ok_migrations: number[] = [];
+            for (const migration of run_migrations) {
+                try {
+                    await this.runMigrationAndUpdateVersionRepo(migration);
+                    ok_migrations.push(migration);
+                } catch (error: any) {
+                    this.logger.error(`Migration ${migration} failed no other migrations will be executed`);
+                    this.logger.error(error);
+                    await this.handleErrorAndUpdateVersionRepo(error);
+                    break;
+                }
             }
+            return ok_migrations;
+        } finally {
+            if (acquiredLock) await this.migrationVersionRepo.releaseLock();
         }
-        return ok_migrations;
     }
 
     private async runMigrationAndUpdateVersionRepo(migration: number) {
-        await this.migrationVersionRepo.saveMigrationLock(true);
         await this.migrationsScripts.runMigration(migration);
         await this.migrationVersionRepo.setCurrentVersion(migration);
-        await this.migrationVersionRepo.saveMigrationLock(false);
         await this.migrationVersionRepo.setLastRunCompleted(true);
         await this.migrationVersionRepo.setLastRunError('');
     }
 
     private async handleErrorAndUpdateVersionRepo(error: any) {
-        await this.migrationVersionRepo.saveMigrationLock(false);
         await this.migrationVersionRepo.setLastRunCompleted(false);
         await this.migrationVersionRepo.setLastRunError(error.message || JSON.stringify(error));
     }
 
-    private async getMigrationsToRun(): Promise<number[]> {
+    private async getMigrationsToRun(acquiredLock: boolean): Promise<number[]> {
         const current_version: number = await this.migrationVersionRepo.getCurrentVersion();
 
-        // FIXME locking is not thread safe, it should be done in a transaction
-        const lock = await this.migrationVersionRepo.getMigrationLock();
-        if (lock) {
+        if (!acquiredLock) {
             this.logger.warn('Migration db locked, migration is still in progress?');
             const availableConcurrentMigrations = this.migrationsScripts.getAvailableConcurrentMigrationsVersions();
 

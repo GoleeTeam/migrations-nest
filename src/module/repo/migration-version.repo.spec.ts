@@ -38,6 +38,10 @@ describe('MigrationVersionRepo', () => {
         await collection.deleteMany({});
     });
 
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
     it('should have not document on creation', async () => {
         expect(repo).toBeDefined();
         expect(await collection.findOne()).toBeNull();
@@ -65,5 +69,33 @@ describe('MigrationVersionRepo', () => {
         await repo.init();
 
         expect(await collection.find().toArray()).toEqual([existingVersion]);
+    });
+
+    it('should create one document when initialized concurrently', async () => {
+        const secondRepo = new MigrationVersionRepo(mongoClient, 'migrations_version');
+
+        await Promise.all([repo.init(), secondRepo.init()]);
+
+        expect(await collection.countDocuments()).toBe(1);
+    });
+
+    it('should let only one caller acquire the lock', async () => {
+        await repo.init();
+        const secondRepo = new MigrationVersionRepo(mongoClient, 'migrations_version');
+
+        const firstResult = repo.tryAcquireLock();
+        const secondResult = secondRepo.tryAcquireLock();
+        const results = await Promise.all([firstResult, secondResult]);
+
+        expect(results.filter(Boolean)).toHaveLength(1);
+    });
+
+    it('should allow acquiring the lock after it is released', async () => {
+        await repo.init();
+        expect(await repo.tryAcquireLock()).toBe(true);
+
+        await repo.releaseLock();
+
+        expect(await repo.tryAcquireLock()).toBe(true);
     });
 });
