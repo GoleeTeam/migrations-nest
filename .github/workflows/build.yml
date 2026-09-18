@@ -1,102 +1,102 @@
 name: Build
 
 on:
-  push:
-    branches:
-      - main
+    push:
+        branches:
+            - main
 
 jobs:
-  build:
-    name: "Build (Mongo ${{ matrix.mongo-version }})"
-    runs-on: ubuntu-latest
+    build:
+        name: 'Build (Mongo ${{ matrix.mongo-version }})'
+        runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        mongo-version: [^4.0.0, ^5.0.0, ^6.0.0]
+        strategy:
+            matrix:
+                mongo-version: [^4.0.0, ^5.0.0, ^6.0.0]
 
-    env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+        env:
+            NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+            ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-      - name: "Setup: pnpm"
-        uses: pnpm/action-setup@v4
-        with:
-          # pinned pnpm version, to avoid issue with _authToken and NPM_TOKEN
-          # https://github.com/pnpm/pnpm/issues/12314#issuecomment-4674190671
-          version: 10.34.1
+            - name: 'Setup: pnpm'
+              uses: pnpm/action-setup@v4
+              with:
+                  # pinned pnpm version, to avoid issue with _authToken and NPM_TOKEN
+                  # https://github.com/pnpm/pnpm/issues/12314#issuecomment-4674190671
+                  version: 10.34.1
 
-      - name: "Setup: Node"
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.19.0
-          cache: "pnpm"
+            - name: 'Setup: Node'
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 24.19.0
+                  cache: 'pnpm'
 
-      - name: Dependencies
-        run: pnpm install --frozen-lockfile
+            - name: Dependencies
+              run: pnpm install --frozen-lockfile
 
-      - name: "Dependencies: peer"
-        run: |
-          pnpm install \
-            @golee/mongo-nest mongodb@${{matrix.mongo-version}}
+            - name: 'Dependencies: peer'
+              run: |
+                  pnpm install \
+                    @golee/mongo-nest mongodb@${{matrix.mongo-version}}
 
-      - name: Build
-        run: pnpm run build
+            - name: Build
+              run: pnpm run build
 
-      - name: Test
-        run: pnpm run test
+            - name: Test
+              run: pnpm run test
 
-      - name: Linting
-        run: pnpm run lint
+            - name: Linting
+              run: pnpm run lint
 
-  publish:
-    name: Publish
-    runs-on: ubuntu-latest
-    needs: build
+    publish:
+        name: Publish
+        runs-on: ubuntu-latest
+        needs: build
 
-    permissions:
-      id-token: write
-      contents: write
+        permissions:
+            id-token: write
+            contents: write
 
-    env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+        env:
+            NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+            ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
-    if: github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip-publish]')
+        if: github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip-publish]')
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-      - name: "Setup: pnpm"
-        uses: pnpm/action-setup@v4
-        with:
-          # pinned pnpm version, to avoid issue with _authToken and NPM_TOKEN
-          # https://github.com/pnpm/pnpm/issues/12314#issuecomment-4674190671
-          version: 10.34.1
+            - name: 'Setup: pnpm'
+              uses: pnpm/action-setup@v4
+              with:
+                  # pinned pnpm version, to avoid issue with _authToken and NPM_TOKEN
+                  # https://github.com/pnpm/pnpm/issues/12314#issuecomment-4674190671
+                  version: 10.34.1
 
-      - name: "Setup: Node"
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.19.0
-          cache: "pnpm"
+            - name: 'Setup: Node'
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 24.19.0
+                  cache: 'pnpm'
 
-      - name: "Release: Prepare"
-        run: |
-          git config --global user.name 'GitHub Action'
-          git config --global user.email 'action@github'
-          pnpm version patch
+            - name: 'Release: Prepare'
+              run: |
+                  git config --global user.name 'GitHub Action'
+                  git config --global user.email 'action@github'
+                  pnpm version patch
 
-      - name: Dependencies
-        run: pnpm install --frozen-lockfile
+            - name: Dependencies
+              run: pnpm install --frozen-lockfile
 
-      - name: Publish
-        run: |
-          npm install -g npm@11.5.1
-          pnpm publish --no-git-checks
+            - name: Publish
+              run: |
+                  npm install -g npm@11.5.1
+                  pnpm publish --no-git-checks
 
-      - name: "Release: Perform"
-        run: git push --follow-tags --no-verify
+            - name: 'Release: Perform'
+              run: git push --follow-tags --no-verify

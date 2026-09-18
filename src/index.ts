@@ -1,7 +1,7 @@
-import { MigrationsModule } from './module/migrations.module';
+import { MigrationScript } from './module/interfaces/migration-script.abstract';
 import { IMigrationScript } from './module/interfaces/migration-script.interface';
 import { paginate } from './module/interfaces/paginate';
-import { MigrationScript } from './module/interfaces/migration-script.abstract';
+import { MigrationsModule } from './module/migrations.module';
 import { MigrationsOptions } from './module/options';
 
-export { MigrationsModule, IMigrationScript, MigrationScript, paginate, MigrationsOptions };
+export { IMigrationScript, MigrationScript, MigrationsModule, MigrationsOptions, paginate };

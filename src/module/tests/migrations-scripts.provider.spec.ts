@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { MigrationsScriptsProvider } from '../migrations-scripts.provider';
 import { IMigrationScript } from '../interfaces/migration-script.interface';
+import { MigrationsScriptsProvider } from '../migrations-scripts.provider';
 
 describe('MigrationsScripts', function () {
     let service: MigrationsScriptsProvider;

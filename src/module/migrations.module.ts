@@ -1,9 +1,9 @@
 import { DynamicModule, Module } from '@nestjs/common';
-import { MigrationsOptions } from './options';
+import { MongoClient } from 'mongodb';
 import { MigrationsRunner } from './migration-runner.service';
 import { MigrationsScriptsProvider } from './migrations-scripts.provider';
+import { MigrationsOptions } from './options';
 import { MigrationVersionRepo } from './repo/migration-version.repo';
-import { MongoClient } from 'mongodb';
 
 const MigrationScriptFactory = (options: Pick<MigrationsOptions, 'scripts'>) => {
     return {
