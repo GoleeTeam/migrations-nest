@@ -11,13 +11,14 @@ describe('MigrationsRunner', () => {
 
     const getCurrentVersionMock = jest.fn();
     const setCurrentVersionMock = jest.fn();
-    const getMigrationLock = jest.fn();
-    const saveMigrationLock = jest.fn();
+    const tryAcquireLockMock = jest.fn();
+    const releaseLockMock = jest.fn();
     const setLastRunCompletedMock = jest.fn();
     const setLastRunErrorMock = jest.fn();
 
     beforeEach(async () => {
         getAvailableMigrationMock.mockReturnValue([]);
+        tryAcquireLockMock.mockResolvedValue(true);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -42,8 +43,8 @@ describe('MigrationsRunner', () => {
                     useValue: {
                         getCurrentVersion: getCurrentVersionMock,
                         setCurrentVersion: setCurrentVersionMock,
-                        getMigrationLock: getMigrationLock,
-                        saveMigrationLock: saveMigrationLock,
+                        tryAcquireLock: tryAcquireLockMock,
+                        releaseLock: releaseLockMock,
                         setLastRunCompleted: setLastRunCompletedMock,
                         setLastRunError: setLastRunErrorMock,
                     },
@@ -82,6 +83,7 @@ describe('MigrationsRunner', () => {
             it('should run one migration', async () => {
                 await service.runMigrations();
                 expect(scriptRunMigrationMock).toBeCalledWith(1);
+                expect(releaseLockMock).toBeCalledTimes(1);
             });
 
             it('should run one migration and increase current version', async () => {
@@ -153,7 +155,7 @@ describe('MigrationsRunner', () => {
             function givenMigrationsLocked() {
                 getAvailableMigrationMock.mockReturnValue([1, 2, 3]);
                 getCurrentVersionMock.mockResolvedValue(1);
-                getMigrationLock.mockResolvedValue(true);
+                tryAcquireLockMock.mockResolvedValue(false);
             }
 
             beforeEach(function () {
@@ -180,6 +182,7 @@ describe('MigrationsRunner', () => {
 
                 await service.runMigrations();
                 expect(scriptRunMigrationMock).toBeCalledTimes(1);
+                expect(releaseLockMock).not.toBeCalled();
             });
         });
     });

@@ -17,15 +17,11 @@ export class MigrationVersionRepo {
     }
 
     public async init() {
-        const versionExists = await this.collection.findOne({});
-        if (!versionExists) {
-            await this.collection.insertOne({
-                version: 0,
-                lock: false,
-                last_run_completed: false,
-                last_run_error: '',
-            });
-        }
+        await this.collection.updateOne(
+            {},
+            { $setOnInsert: { version: 0, lock: false, last_run_completed: false, last_run_error: '' } },
+            { upsert: true },
+        );
     }
 
     public async getCurrentVersion(): Promise<number> {
@@ -34,23 +30,23 @@ export class MigrationVersionRepo {
     }
 
     public async setCurrentVersion(version: number): Promise<void> {
-        await this.collection.updateOne({}, { $set: { version } }, { upsert: true });
+        await this.collection.updateOne({}, { $set: { version } });
     }
 
-    public async getMigrationLock() {
-        const saved_version = await this.collection.findOne({});
-        return saved_version?.lock || false;
+    public async tryAcquireLock(): Promise<boolean> {
+        const result = await this.collection.updateOne({ lock: { $ne: true } }, { $set: { lock: true } });
+        return result.modifiedCount === 1;
     }
 
-    public async saveMigrationLock(lock: boolean): Promise<void> {
-        await this.collection.updateOne({}, { $set: { lock } }, { upsert: true });
+    public async releaseLock(): Promise<void> {
+        await this.collection.updateOne({}, { $set: { lock: false } });
     }
 
     async setLastRunCompleted(last_run_completed: boolean) {
-        await this.collection.updateOne({}, { $set: { last_run_completed } }, { upsert: true });
+        await this.collection.updateOne({}, { $set: { last_run_completed } });
     }
 
     async setLastRunError(last_run_error: string) {
-        await this.collection.updateOne({}, { $set: { last_run_error } }, { upsert: true });
+        await this.collection.updateOne({}, { $set: { last_run_error } });
     }
 }
