@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { DuplicateMigrationVersionsError, MissingMigrationVersionError } from './errors/migration.errors';
 import { IMigrationScript } from './interfaces/migration-script.interface';
 
 @Injectable()
@@ -15,8 +16,9 @@ export class MigrationsScriptsProvider {
     }
 
     private checkDuplicatedVersions() {
-        if (this.getScriptsWithDuplicatedVersion().length) {
-            throw new Error(`Duplicated Scripts for versions: ${this.getScriptsWithDuplicatedVersion()}`);
+        const duplicatedVersions = this.getScriptsWithDuplicatedVersion();
+        if (duplicatedVersions.length) {
+            throw new DuplicateMigrationVersionsError(duplicatedVersions);
         }
     }
 
@@ -31,7 +33,7 @@ export class MigrationsScriptsProvider {
 
     private getVersions(): number[] {
         return this.migrations.map((m) => {
-            if (!m.version) throw new Error(`Migration Script: ${m.constructor.name} must have a 'version' attribute!`);
+            if (!m.version) throw new MissingMigrationVersionError(m.constructor.name);
             return m.version;
         });
     }

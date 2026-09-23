@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { DuplicateMigrationVersionsError, MissingMigrationVersionError } from '../errors/migration.errors';
 import { IMigrationScript } from '../interfaces/migration-script.interface';
 import { MigrationsScriptsProvider } from '../migrations-scripts.provider';
 
@@ -51,6 +52,7 @@ describe('MigrationsScripts', function () {
         new MigrationScript3Fixture(),
         new MigrationScript1Fixture(),
     ];
+    const migrationWithoutVersionFixture = [{ run: jest.fn() } as unknown as IMigrationScript];
 
     async function createMigrationModule(migrationScriptsFixture: IMigrationScript[]) {
         const module: TestingModule = await Test.createTestingModule({
@@ -122,7 +124,19 @@ describe('MigrationsScripts', function () {
         });
         describe('getAvailableMigrations', function () {
             it('should fail if there are migrations with the same version number', function () {
-                expect(() => service.getAvailableMigrationsVersions()).toThrow();
+                expect(() => service.getAvailableMigrationsVersions()).toThrow(DuplicateMigrationVersionsError);
+            });
+        });
+    });
+
+    describe('with a migration script without version', function () {
+        beforeEach(async () => {
+            await createMigrationModule(migrationWithoutVersionFixture);
+        });
+
+        describe('getAvailableMigrations', function () {
+            it('should fail with a missing migration version error', function () {
+                expect(() => service.getAvailableMigrationsVersions()).toThrow(MissingMigrationVersionError);
             });
         });
     });
