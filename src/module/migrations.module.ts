@@ -5,6 +5,7 @@ import { MigrationJobsRunner } from './migration-jobs-runner.service';
 import { MigrationsRunner } from './migration-runner.service';
 import { MigrationsScriptsProvider } from './migrations-scripts.provider';
 import { MigrationsOptions } from './options';
+import { MigrationJobSourceRepo } from './repo/migration-job-source.repo';
 import { MigrationJobStateRepo } from './repo/migration-job-state.repo';
 import { MigrationVersionRepo } from './repo/migration-version.repo';
 
@@ -36,7 +37,8 @@ const MigrationJobRunnerFactory = (
         provide: MigrationJobsRunner,
         useFactory: (mongoClient: MongoClient, ...jobInstances: MigrationJob[]) => {
             const stateRepo = new MigrationJobStateRepo(mongoClient, options.collectionName);
-            return new MigrationJobsRunner(jobInstances, stateRepo, mongoClient, options.maxBatchSize);
+            const sourceRepo = new MigrationJobSourceRepo(mongoClient);
+            return new MigrationJobsRunner(jobInstances, stateRepo, sourceRepo, options.maxBatchSize);
         },
         inject: [options.mongoClientToken, ...jobs.map((j) => j.provide)],
     };

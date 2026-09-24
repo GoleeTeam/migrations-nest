@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { MongoClient, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import { InvalidBatchSizeError, JobAlreadyRunningError, JobNotFoundError } from './errors/migration.errors';
 import {
     MigrationJob,
@@ -7,6 +7,7 @@ import {
     MigrationJobRunResult,
     MigrationJobStatus,
 } from './interfaces/migration-job.interface';
+import { MigrationJobSourceRepo } from './repo/migration-job-source.repo';
 import { MigrationJobStateRepo } from './repo/migration-job-state.repo';
 
 const DEFAULT_MAX_BATCH_SIZE = 10_000;
@@ -18,7 +19,7 @@ export class MigrationJobsRunner implements OnModuleInit {
     constructor(
         private readonly jobs: MigrationJob[],
         private readonly stateRepo: MigrationJobStateRepo,
-        private readonly mongoClient: MongoClient,
+        private readonly sourceRepo: MigrationJobSourceRepo,
         private readonly maxBatchSize: number = DEFAULT_MAX_BATCH_SIZE,
     ) {}
 
@@ -95,16 +96,8 @@ export class MigrationJobsRunner implements OnModuleInit {
     }
 
     private async executeBatch(job: MigrationJob, jobName: string, batchSize: number): Promise<MigrationJobRunResult> {
-        const collection = this.mongoClient.db().collection(job.collectionName);
-        const filter = job.filter ?? {};
-        const readPreference = job.readPreference ?? 'secondaryPreferred';
         const lastProcessedId = await this.stateRepo.getLastProcessedId(jobName);
-        const batchFilter = lastProcessedId ? { ...filter, _id: { $gt: lastProcessedId } } : filter;
-
-        const [totalCount, batch] = await Promise.all([
-            collection.countDocuments(filter, { readPreference }),
-            collection.find(batchFilter, { readPreference }).sort({ _id: 1 }).limit(batchSize).toArray(),
-        ]);
+        const { documents: batch, totalCount } = await this.sourceRepo.findBatch(job, lastProcessedId, batchSize);
 
         let failures: MigrationJobItemFailure[] = [];
         let extra: unknown;
@@ -121,10 +114,7 @@ export class MigrationJobsRunner implements OnModuleInit {
 
         const newLastProcessedId = batch.length > 0 ? (batch[batch.length - 1]._id as ObjectId) : lastProcessedId;
 
-        const remainingCount =
-            newLastProcessedId !== null
-                ? await collection.countDocuments({ ...filter, _id: { $gt: newLastProcessedId } }, { readPreference })
-                : 0;
+        const remainingCount = await this.sourceRepo.countRemaining(job, newLastProcessedId);
         const progressPercentage =
             totalCount === 0
                 ? 100
