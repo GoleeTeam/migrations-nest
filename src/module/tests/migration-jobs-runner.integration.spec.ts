@@ -251,6 +251,10 @@ describe('MigrationJobsRunner integration', () => {
                 expect(stateAfterThrow!.lastRunError).toBe('explosion');
                 // Lock released
                 expect(stateAfterThrow!.lock).toBe(false);
+                await expect(runner.getJobStatus('test-job')).resolves.toMatchObject({
+                    lastRunError: 'explosion',
+                    lock: false,
+                });
             });
         });
 
