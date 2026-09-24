@@ -84,6 +84,7 @@ Register jobs alongside scripts:
 MigrationsModule.forRoot({
     mongoClientToken: 'MONGO_CLIENT',
     collectionName: 'migrations',
+    maxBatchSize: 5000, // optional, defaults to 10 000
     imports: [ProfilesModule],
     scripts: [],
     jobs: [
@@ -114,16 +115,23 @@ export class MigrationJobsController {
     runNextBatch(@Param('jobName') jobName: string, @Body() body: RunNextBatchDto) {
         return this.migrationJobs.runNextBatch(jobName, body.batchSize);
     }
+
+    @Get(':jobName/status')
+    getJobStatus(@Param('jobName') jobName: string) {
+        return this.migrationJobs.getJobStatus(jobName);
+    }
 }
 ```
 
 The runner:
 
 - reads at most `batchSize` documents in ascending `_id` order;
+- rejects `batchSize` above `maxBatchSize` (default `10 000`) with `InvalidBatchSizeError`;
 - resumes after the persisted `lastProcessedId`;
 - prevents concurrent execution of the same job;
 - returns attempted, succeeded, failed, total, and remaining counts, an integer `progressPercentage` from 0 to 100,
   and the current batch's `averageItemProcessingTimeMs`;
+- persists the last-run snapshot so `getJobStatus(jobName)` can return it without re-querying the source collection;
 - advances past failures returned by `processBatch`;
 - preserves the previous checkpoint when `processBatch` throws.
 

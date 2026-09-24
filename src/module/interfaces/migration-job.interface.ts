@@ -31,3 +31,16 @@ export interface MigrationJobRunResult {
     averageItemProcessingTimeMs: number | null;
     extra?: unknown;
 }
+
+export interface MigrationJobStatus {
+    jobName: string;
+    lock: boolean;
+    lastRunError: string;
+    attemptedCount: number | null;
+    succeededCount: number | null;
+    failedCount: number | null;
+    totalCount: number | null;
+    remainingCount: number | null;
+    progressPercentage: number;
+    averageItemProcessingTimeMs: number | null;
+}

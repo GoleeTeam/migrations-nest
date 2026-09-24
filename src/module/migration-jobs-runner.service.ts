@@ -1,8 +1,15 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { MongoClient, ObjectId } from 'mongodb';
 import { InvalidBatchSizeError, JobAlreadyRunningError, JobNotFoundError } from './errors/migration.errors';
-import { MigrationJob, MigrationJobItemFailure, MigrationJobRunResult } from './interfaces/migration-job.interface';
+import {
+    MigrationJob,
+    MigrationJobItemFailure,
+    MigrationJobRunResult,
+    MigrationJobStatus,
+} from './interfaces/migration-job.interface';
 import { MigrationJobStateRepo } from './repo/migration-job-state.repo';
+
+const DEFAULT_MAX_BATCH_SIZE = 10_000;
 
 @Injectable()
 export class MigrationJobsRunner implements OnModuleInit {
@@ -10,25 +17,24 @@ export class MigrationJobsRunner implements OnModuleInit {
 
     constructor(
         private readonly jobs: MigrationJob[],
-        private readonly repo: MigrationJobStateRepo,
+        private readonly stateRepo: MigrationJobStateRepo,
         private readonly mongoClient: MongoClient,
+        private readonly maxBatchSize: number = DEFAULT_MAX_BATCH_SIZE,
     ) {}
 
     async onModuleInit(): Promise<void> {
-        await this.repo.init();
+        await this.stateRepo.init();
     }
 
     async runNextBatch(jobName: string, batchSize: number): Promise<MigrationJobRunResult> {
-        if (!Number.isInteger(batchSize) || batchSize <= 0) {
-            throw new InvalidBatchSizeError(batchSize);
-        }
+        this.validateBatchSize(batchSize);
 
         const job = this.jobs.find((j) => j.name === jobName);
         if (!job) {
             throw new JobNotFoundError(jobName);
         }
 
-        const lockAcquired = await this.repo.tryAcquireLock(jobName);
+        const lockAcquired = await this.stateRepo.tryAcquireLock(jobName);
         if (!lockAcquired) {
             throw new JobAlreadyRunningError(jobName);
         }
@@ -36,19 +42,63 @@ export class MigrationJobsRunner implements OnModuleInit {
         try {
             return await this.executeBatch(job, jobName, batchSize);
         } catch (error: any) {
-            await this.repo.saveError(jobName, error.message || String(error));
+            await this.stateRepo.saveError(jobName, error.message || String(error));
             throw error;
         } finally {
-            await this.repo.releaseLock(jobName);
+            await this.stateRepo.releaseLock(jobName);
         }
+    }
+
+    private validateBatchSize(batchSize: number): void {
+        if (!Number.isInteger(batchSize) || batchSize <= 0) {
+            throw new InvalidBatchSizeError(batchSize);
+        }
+        if (batchSize > this.maxBatchSize) {
+            throw new InvalidBatchSizeError(batchSize, this.maxBatchSize);
+        }
+    }
+
+    async getJobStatus(jobName: string): Promise<MigrationJobStatus> {
+        const job = this.jobs.find((j) => j.name === jobName);
+        if (!job) {
+            throw new JobNotFoundError(jobName);
+        }
+
+        const doc = await this.stateRepo.getStatus(jobName);
+        if (!doc) {
+            return {
+                jobName,
+                lock: false,
+                lastRunError: '',
+                attemptedCount: null,
+                succeededCount: null,
+                failedCount: null,
+                totalCount: null,
+                remainingCount: null,
+                progressPercentage: 0,
+                averageItemProcessingTimeMs: null,
+            };
+        }
+
+        return {
+            jobName,
+            lock: doc.lock,
+            lastRunError: doc.lastRunError,
+            attemptedCount: doc.attemptedCount,
+            succeededCount: doc.succeededCount,
+            failedCount: doc.failedCount,
+            totalCount: doc.totalCount,
+            remainingCount: doc.remainingCount,
+            progressPercentage: doc.progressPercentage ?? 0,
+            averageItemProcessingTimeMs: doc.averageItemProcessingTimeMs,
+        };
     }
 
     private async executeBatch(job: MigrationJob, jobName: string, batchSize: number): Promise<MigrationJobRunResult> {
         const collection = this.mongoClient.db().collection(job.collectionName);
         const filter = job.filter ?? {};
         const readPreference = job.readPreference ?? 'secondaryPreferred';
-
-        const lastProcessedId = await this.repo.getLastProcessedId(jobName);
+        const lastProcessedId = await this.stateRepo.getLastProcessedId(jobName);
         const batchFilter = lastProcessedId ? { ...filter, _id: { $gt: lastProcessedId } } : filter;
 
         const [totalCount, batch] = await Promise.all([
@@ -80,7 +130,16 @@ export class MigrationJobsRunner implements OnModuleInit {
                 ? 100
                 : Math.min(100, Math.max(0, Math.round(((totalCount - remainingCount) / totalCount) * 100)));
 
-        await this.repo.saveProgress(jobName, newLastProcessedId, batchSize);
+        await this.stateRepo.saveProgress(jobName, newLastProcessedId, {
+            batchSize,
+            attemptedCount: batch.length,
+            succeededCount: batch.length - failures.length,
+            failedCount: failures.length,
+            totalCount,
+            remainingCount,
+            progressPercentage,
+            averageItemProcessingTimeMs,
+        });
 
         this.logger.log(
             `Job "${jobName}" batch: attempted=${batch.length}, failed=${failures.length}, ` +

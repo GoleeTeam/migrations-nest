@@ -30,7 +30,8 @@ export class JobNotFoundError extends MigrationError {
 }
 
 export class InvalidBatchSizeError extends MigrationError {
-    constructor(batchSize: number) {
-        super(`batchSize must be a positive integer, got: ${batchSize}`);
+    constructor(batchSize: number, maxBatchSize?: number) {
+        const cap = maxBatchSize !== undefined ? `, max: ${maxBatchSize}` : '';
+        super(`batchSize must be a positive integer${cap}, got: ${batchSize}`);
     }
 }

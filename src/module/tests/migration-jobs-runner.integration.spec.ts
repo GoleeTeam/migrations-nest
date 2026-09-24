@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Collection, MongoClient, ObjectId } from 'mongodb';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { InvalidBatchSizeError, JobAlreadyRunningError, JobNotFoundError } from '../errors/migration.errors';
-import { MigrationJob, MigrationJobBatchResult } from '../interfaces/migration-job.interface';
+import { MigrationJob, MigrationJobBatchResult, MigrationJobStatus } from '../interfaces/migration-job.interface';
 import { MigrationJobsRunner } from '../migration-jobs-runner.service';
 import { MigrationsRunner } from '../migration-runner.service';
 import { MigrationsModule } from '../migrations.module';
@@ -62,6 +62,7 @@ describe('MigrationJobsRunner integration', () => {
     async function createTestingModule(
         jobs: MigrationJob[],
         scripts: { version: number; run: () => Promise<void> }[] = [],
+        options: { maxBatchSize?: number } = {},
     ): Promise<TestingModule> {
         // Provide the MongoClient inside a NestJS module so MigrationsModule.forRoot
         // can inject it (providers declared in the outer TestingModule are not visible
@@ -85,6 +86,7 @@ describe('MigrationJobsRunner integration', () => {
                         provide: `Job_${job.name}`,
                         useFactory: () => job,
                     })),
+                    ...options,
                 }),
             ],
         }).compile();
@@ -314,6 +316,62 @@ describe('MigrationJobsRunner integration', () => {
                 const module = await createTestingModule([makeJob('test-job')]);
                 const runner = module.get(MigrationJobsRunner);
                 await expect(runner.runNextBatch('test-job', 1.5)).rejects.toThrow(InvalidBatchSizeError);
+            });
+
+            it('should throw InvalidBatchSizeError when batchSize exceeds the configured maximum', async () => {
+                const module = await createTestingModule([makeJob('test-job')], [], { maxBatchSize: 2 });
+                const runner = module.get(MigrationJobsRunner);
+                await expect(runner.runNextBatch('test-job', 3)).rejects.toThrow(InvalidBatchSizeError);
+            });
+        });
+    });
+
+    describe('getJobStatus', () => {
+        describe('Given a registered job that has never run', () => {
+            it('should return a not-started status without creating a document', async () => {
+                const module = await createTestingModule([makeJob('test-job')]);
+                const runner = module.get(MigrationJobsRunner);
+
+                const status = await runner.getJobStatus('test-job');
+
+                expect(status).toMatchObject<MigrationJobStatus>({
+                    jobName: 'test-job',
+                    lock: false,
+                    lastRunError: '',
+                    progressPercentage: 0,
+                    attemptedCount: null,
+                    succeededCount: null,
+                    failedCount: null,
+                    totalCount: null,
+                    remainingCount: null,
+                    averageItemProcessingTimeMs: null,
+                });
+                const docs = await migrationsCollection.find({ name: 'test-job' }).toArray();
+                expect(docs).toHaveLength(0);
+            });
+        });
+
+        describe('Given a job after a successful batch', () => {
+            it('should return the persisted run snapshot', async () => {
+                await insertTestDocs(5);
+                const module = await createTestingModule([makeJob('test-job')]);
+                const runner = module.get(MigrationJobsRunner);
+
+                const runResult = await runner.runNextBatch('test-job', 3);
+                const status = await runner.getJobStatus('test-job');
+
+                expect(status).toMatchObject<MigrationJobStatus>({
+                    jobName: 'test-job',
+                    lock: false,
+                    lastRunError: '',
+                    attemptedCount: runResult.attemptedCount,
+                    succeededCount: runResult.succeededCount,
+                    failedCount: runResult.failedCount,
+                    totalCount: runResult.totalCount,
+                    remainingCount: runResult.remainingCount,
+                    progressPercentage: runResult.progressPercentage,
+                    averageItemProcessingTimeMs: runResult.averageItemProcessingTimeMs,
+                });
             });
         });
     });

@@ -6,8 +6,27 @@ type JobStateDocument = {
     lastProcessedId: ObjectId | null;
     lastBatchSize: number | null;
     lastRunError: string;
+    // Last-run snapshot (null = never run)
+    attemptedCount: number | null;
+    succeededCount: number | null;
+    failedCount: number | null;
+    totalCount: number | null;
+    remainingCount: number | null;
+    progressPercentage: number | null;
+    averageItemProcessingTimeMs: number | null;
     createdAt: Date;
     updatedAt: Date;
+};
+
+type RunSnapshot = {
+    batchSize: number;
+    attemptedCount: number;
+    succeededCount: number;
+    failedCount: number;
+    totalCount: number;
+    remainingCount: number;
+    progressPercentage: number;
+    averageItemProcessingTimeMs: number | null;
 };
 
 export class MigrationJobStateRepo {
@@ -31,6 +50,13 @@ export class MigrationJobStateRepo {
                         lastProcessedId: null,
                         lastBatchSize: null,
                         lastRunError: '',
+                        attemptedCount: null,
+                        succeededCount: null,
+                        failedCount: null,
+                        totalCount: null,
+                        remainingCount: null,
+                        progressPercentage: null,
+                        averageItemProcessingTimeMs: null,
                         createdAt: new Date(),
                     },
                 },
@@ -52,14 +78,21 @@ export class MigrationJobStateRepo {
         return doc?.lastProcessedId ?? null;
     }
 
-    async saveProgress(jobName: string, lastProcessedId: ObjectId | null, lastBatchSize: number): Promise<void> {
+    async saveProgress(jobName: string, lastProcessedId: ObjectId | null, snapshot: RunSnapshot): Promise<void> {
         await this.collection.updateOne(
             { name: jobName },
             {
                 $set: {
                     lastProcessedId,
-                    lastBatchSize,
+                    lastBatchSize: snapshot.batchSize,
                     lastRunError: '',
+                    attemptedCount: snapshot.attemptedCount,
+                    succeededCount: snapshot.succeededCount,
+                    failedCount: snapshot.failedCount,
+                    totalCount: snapshot.totalCount,
+                    remainingCount: snapshot.remainingCount,
+                    progressPercentage: snapshot.progressPercentage,
+                    averageItemProcessingTimeMs: snapshot.averageItemProcessingTimeMs,
                     updatedAt: new Date(),
                 },
             },
@@ -68,6 +101,10 @@ export class MigrationJobStateRepo {
 
     async saveError(jobName: string, error: string): Promise<void> {
         await this.collection.updateOne({ name: jobName }, { $set: { lastRunError: error, updatedAt: new Date() } });
+    }
+
+    async getStatus(jobName: string): Promise<JobStateDocument | null> {
+        return this.collection.findOne({ name: jobName });
     }
 }
 

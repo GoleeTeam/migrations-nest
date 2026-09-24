@@ -29,14 +29,14 @@ const MigrationVersionRepoFactory = (options: Pick<MigrationsOptions, 'mongoClie
 };
 
 const MigrationJobRunnerFactory = (
-    options: Pick<MigrationsOptions, 'mongoClientToken' | 'collectionName' | 'jobs'>,
+    options: Pick<MigrationsOptions, 'mongoClientToken' | 'collectionName' | 'jobs' | 'maxBatchSize'>,
 ) => {
     const jobs = options.jobs ?? [];
     return {
         provide: MigrationJobsRunner,
         useFactory: (mongoClient: MongoClient, ...jobInstances: MigrationJob[]) => {
-            const repo = new MigrationJobStateRepo(mongoClient, options.collectionName);
-            return new MigrationJobsRunner(jobInstances, repo, mongoClient);
+            const stateRepo = new MigrationJobStateRepo(mongoClient, options.collectionName);
+            return new MigrationJobsRunner(jobInstances, stateRepo, mongoClient, options.maxBatchSize);
         },
         inject: [options.mongoClientToken, ...jobs.map((j) => j.provide)],
     };

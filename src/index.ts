@@ -11,6 +11,7 @@ import {
     MigrationJobBatchResult,
     MigrationJobItemFailure,
     MigrationJobRunResult,
+    MigrationJobStatus,
 } from './module/interfaces/migration-job.interface';
 import { MigrationScript } from './module/interfaces/migration-script.abstract';
 import { IMigrationScript } from './module/interfaces/migration-script.interface';
@@ -31,6 +32,7 @@ export {
     MigrationJobItemFailure,
     MigrationJobRunResult,
     MigrationJobsRunner,
+    MigrationJobStatus,
     MigrationScript,
     MigrationsModule,
     MigrationsOptions,
