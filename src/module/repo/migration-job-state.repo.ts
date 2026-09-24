@@ -107,7 +107,7 @@ export class MigrationJobStateRepo {
         await this.collection.updateOne({ name: jobName }, { $set: { lastRunError: error, updatedAt: new Date() } });
     }
 
-    async getStatus(jobName: string): Promise<JobStateDocument | null> {
+    getStatus(jobName: string): Promise<JobStateDocument | null> {
         return this.collection.findOne({ name: jobName });
     }
 }
