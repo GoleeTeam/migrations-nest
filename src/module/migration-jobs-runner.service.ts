@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { MongoClient, ObjectId } from 'mongodb';
-import { InvalidRequestedCountError, JobAlreadyRunningError, JobNotFoundError } from './errors/migration.errors';
-import { JobFailure, MigrationJob, MigrationJobChunkResult } from './interfaces/migration-job.interface';
+import { InvalidBatchSizeError, JobAlreadyRunningError, JobNotFoundError } from './errors/migration.errors';
+import { MigrationJob, MigrationJobItemFailure, MigrationJobRunResult } from './interfaces/migration-job.interface';
 import { MigrationJobStateRepo } from './repo/migration-job-state.repo';
 
 @Injectable()
@@ -18,9 +18,9 @@ export class MigrationJobsRunner implements OnModuleInit {
         await this.repo.init();
     }
 
-    async runNextChunk(jobName: string, requestedCount: number): Promise<MigrationJobChunkResult> {
-        if (!Number.isInteger(requestedCount) || requestedCount <= 0) {
-            throw new InvalidRequestedCountError(requestedCount);
+    async runNextBatch(jobName: string, batchSize: number): Promise<MigrationJobRunResult> {
+        if (!Number.isInteger(batchSize) || batchSize <= 0) {
+            throw new InvalidBatchSizeError(batchSize);
         }
 
         const job = this.jobs.find((j) => j.name === jobName);
@@ -34,7 +34,7 @@ export class MigrationJobsRunner implements OnModuleInit {
         }
 
         try {
-            return await this.executeChunk(job, jobName, requestedCount);
+            return await this.executeBatch(job, jobName, batchSize);
         } catch (error: any) {
             await this.repo.saveError(jobName, error.message || String(error));
             throw error;
@@ -43,11 +43,7 @@ export class MigrationJobsRunner implements OnModuleInit {
         }
     }
 
-    private async executeChunk(
-        job: MigrationJob,
-        jobName: string,
-        requestedCount: number,
-    ): Promise<MigrationJobChunkResult> {
+    private async executeBatch(job: MigrationJob, jobName: string, batchSize: number): Promise<MigrationJobRunResult> {
         const collection = this.mongoClient.db().collection(job.collectionName);
         const filter = job.filter ?? {};
         const readPreference = job.readPreference ?? 'secondaryPreferred';
@@ -55,43 +51,43 @@ export class MigrationJobsRunner implements OnModuleInit {
         const lastProcessedId = await this.repo.getLastProcessedId(jobName);
         const batchFilter = lastProcessedId ? { ...filter, _id: { $gt: lastProcessedId } } : filter;
 
-        const [totalItemsCount, batch] = await Promise.all([
+        const [totalCount, batch] = await Promise.all([
             collection.countDocuments(filter, { readPreference }),
-            collection.find(batchFilter, { readPreference }).sort({ _id: 1 }).limit(requestedCount).toArray(),
+            collection.find(batchFilter, { readPreference }).sort({ _id: 1 }).limit(batchSize).toArray(),
         ]);
 
-        let failures: JobFailure[] = [];
+        let failures: MigrationJobItemFailure[] = [];
         let extra: unknown;
 
         if (batch.length > 0) {
-            const result = await job.processBatch(batch, requestedCount);
+            const result = await job.processBatch(batch);
             failures = result.failures;
             extra = result.extra;
         }
 
         const newLastProcessedId = batch.length > 0 ? (batch[batch.length - 1]._id as ObjectId) : lastProcessedId;
 
-        const remainingItemsCount =
+        const remainingCount =
             newLastProcessedId !== null
                 ? await collection.countDocuments({ ...filter, _id: { $gt: newLastProcessedId } }, { readPreference })
                 : 0;
 
-        await this.repo.saveProgress(jobName, newLastProcessedId, requestedCount);
+        await this.repo.saveProgress(jobName, newLastProcessedId, batchSize);
 
         this.logger.log(
-            `Job "${jobName}" chunk: attempted=${batch.length}, failed=${failures.length}, ` +
-                `total=${totalItemsCount}, remaining=${remainingItemsCount}`,
+            `Job "${jobName}" batch: attempted=${batch.length}, failed=${failures.length}, ` +
+                `total=${totalCount}, remaining=${remainingCount}`,
         );
 
         return {
             jobName,
-            requestedCount,
+            batchSize,
             attemptedCount: batch.length,
             succeededCount: batch.length - failures.length,
             failedCount: failures.length,
             failures,
-            totalItemsCount,
-            remainingItemsCount,
+            totalCount,
+            remainingCount,
             extra,
         };
     }

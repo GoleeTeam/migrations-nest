@@ -5,27 +5,27 @@ export interface MigrationJob {
     collectionName: string;
     filter?: Filter<Document>;
     readPreference?: ReadPreferenceLike;
-    processBatch(docs: WithId<Document>[], requestedCount: number): Promise<MigrationJobBatchResult>;
+    processBatch(docs: WithId<Document>[]): Promise<MigrationJobBatchResult>;
 }
 
 export interface MigrationJobBatchResult {
-    failures: JobFailure[];
+    failures: MigrationJobItemFailure[];
     extra?: unknown;
 }
 
-export interface JobFailure {
+export interface MigrationJobItemFailure {
     itemId: string;
     error: string;
 }
 
-export interface MigrationJobChunkResult {
+export interface MigrationJobRunResult {
     jobName: string;
-    requestedCount: number;
+    batchSize: number;
     attemptedCount: number;
     succeededCount: number;
     failedCount: number;
-    failures: JobFailure[];
-    totalItemsCount: number;
-    remainingItemsCount: number;
+    failures: MigrationJobItemFailure[];
+    totalCount: number;
+    remainingCount: number;
     extra?: unknown;
 }

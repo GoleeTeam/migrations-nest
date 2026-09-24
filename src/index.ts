@@ -1,16 +1,16 @@
 import {
     DuplicateMigrationVersionsError,
-    InvalidRequestedCountError,
+    InvalidBatchSizeError,
     JobAlreadyRunningError,
     JobNotFoundError,
     MigrationError,
     MissingMigrationVersionError,
 } from './module/errors/migration.errors';
 import {
-    JobFailure,
     MigrationJob,
     MigrationJobBatchResult,
-    MigrationJobChunkResult,
+    MigrationJobItemFailure,
+    MigrationJobRunResult,
 } from './module/interfaces/migration-job.interface';
 import { MigrationScript } from './module/interfaces/migration-script.abstract';
 import { IMigrationScript } from './module/interfaces/migration-script.interface';
@@ -22,14 +22,14 @@ import { MigrationsOptions } from './module/options';
 export {
     DuplicateMigrationVersionsError,
     IMigrationScript,
-    InvalidRequestedCountError,
+    InvalidBatchSizeError,
     JobAlreadyRunningError,
-    JobFailure,
     JobNotFoundError,
     MigrationError,
     MigrationJob,
     MigrationJobBatchResult,
-    MigrationJobChunkResult,
+    MigrationJobItemFailure,
+    MigrationJobRunResult,
     MigrationJobsRunner,
     MigrationScript,
     MigrationsModule,

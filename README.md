@@ -3,7 +3,7 @@
 The library supports two types of database operations:
 
 - **migration scripts** run automatically at application startup, once and in version order;
-- **migration jobs** process MongoDB documents in chunks and run only when explicitly requested.
+- **migration jobs** process MongoDB documents in batches and run only when explicitly requested.
 
 Both store their state in the collection configured through `collectionName`.
 
@@ -95,30 +95,30 @@ MigrationsModule.forRoot({
 });
 ```
 
-Inject `MigrationJobsRunner` into an application service or controller and request the next chunk:
+Inject `MigrationJobsRunner` into an application service or controller and request the next batch:
 
 ```typescript
 import { MigrationJobsRunner } from '@golee/migrations-nest';
 import { Body, Controller, Param, Post } from '@nestjs/common';
 
-class RunNextChunkDto {
-    requestedCount: number;
+class RunNextBatchDto {
+    batchSize: number;
 }
 
 @Controller('migration-jobs')
 export class MigrationJobsController {
     constructor(private readonly migrationJobs: MigrationJobsRunner) {}
 
-    @Post(':jobName/next-chunk')
-    runNextChunk(@Param('jobName') jobName: string, @Body() body: RunNextChunkDto) {
-        return this.migrationJobs.runNextChunk(jobName, body.requestedCount);
+    @Post(':jobName/next-batch')
+    runNextBatch(@Param('jobName') jobName: string, @Body() body: RunNextBatchDto) {
+        return this.migrationJobs.runNextBatch(jobName, body.batchSize);
     }
 }
 ```
 
 The runner:
 
-- reads at most `requestedCount` documents in ascending `_id` order;
+- reads at most `batchSize` documents in ascending `_id` order;
 - resumes after the persisted `lastProcessedId`;
 - prevents concurrent execution of the same job;
 - returns attempted, succeeded, failed, total, and remaining counts;

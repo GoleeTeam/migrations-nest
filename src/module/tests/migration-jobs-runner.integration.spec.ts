@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Collection, MongoClient, ObjectId } from 'mongodb';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { InvalidRequestedCountError, JobAlreadyRunningError, JobNotFoundError } from '../errors/migration.errors';
+import { InvalidBatchSizeError, JobAlreadyRunningError, JobNotFoundError } from '../errors/migration.errors';
 import { MigrationJob, MigrationJobBatchResult } from '../interfaces/migration-job.interface';
 import { MigrationJobsRunner } from '../migration-jobs-runner.service';
 import { MigrationsRunner } from '../migration-runner.service';
@@ -99,7 +99,7 @@ describe('MigrationJobsRunner integration', () => {
                 // Pre-seed: migration already at version 1 + a job state document from a previous run
                 await migrationsCollection.insertMany([
                     { version: 1, lock: false, last_run_completed: true, last_run_error: '' },
-                    { name: 'some-job', lock: false, lastProcessedId: null, lastRequestedCount: null },
+                    { name: 'some-job', lock: false, lastProcessedId: null, lastBatchSize: null },
                 ]);
 
                 const runMock = jest.fn().mockResolvedValue(undefined);
@@ -122,31 +122,31 @@ describe('MigrationJobsRunner integration', () => {
         });
     });
 
-    describe('runNextChunk', () => {
+    describe('runNextBatch', () => {
         describe('Given a new job', () => {
-            it('should process the first requestedCount docs and return correct counts', async () => {
+            it('should process the first batch and return correct counts', async () => {
                 const ids = await insertTestDocs(5);
                 const module = await createTestingModule([makeJob('test-job')]);
                 const runner = module.get(MigrationJobsRunner);
 
-                const result = await runner.runNextChunk('test-job', 3);
+                const result = await runner.runNextBatch('test-job', 3);
 
                 expect(result).toMatchObject({
                     jobName: 'test-job',
-                    requestedCount: 3,
+                    batchSize: 3,
                     attemptedCount: 3,
                     succeededCount: 3,
                     failedCount: 0,
                     failures: [],
-                    totalItemsCount: 5,
-                    remainingItemsCount: 2,
+                    totalCount: 5,
+                    remainingCount: 2,
                 });
 
                 // Checkpoint must be persisted
                 const state = await migrationsCollection.findOne({ name: 'test-job' });
                 expect(state).not.toBeNull();
                 expect(state!.lastProcessedId.toString()).toBe(ids[2].toString());
-                expect(state!.lastRequestedCount).toBe(3);
+                expect(state!.lastBatchSize).toBe(3);
             });
         });
 
@@ -156,11 +156,11 @@ describe('MigrationJobsRunner integration', () => {
                 const module = await createTestingModule([makeJob('test-job')]);
                 const runner = module.get(MigrationJobsRunner);
 
-                await runner.runNextChunk('test-job', 3); // processes first 3
-                const result = await runner.runNextChunk('test-job', 10); // processes remaining 2
+                await runner.runNextBatch('test-job', 3); // processes first 3
+                const result = await runner.runNextBatch('test-job', 10); // processes remaining 2
 
                 expect(result.attemptedCount).toBe(2);
-                expect(result.remainingItemsCount).toBe(0);
+                expect(result.remainingCount).toBe(0);
             });
         });
 
@@ -170,15 +170,15 @@ describe('MigrationJobsRunner integration', () => {
                 const module = await createTestingModule([makeJob('test-job', { processBatch })]);
                 const runner = module.get(MigrationJobsRunner);
 
-                const result = await runner.runNextChunk('test-job', 100);
+                const result = await runner.runNextBatch('test-job', 100);
 
                 expect(processBatch).not.toHaveBeenCalled();
                 expect(result).toMatchObject({
                     attemptedCount: 0,
                     succeededCount: 0,
                     failedCount: 0,
-                    totalItemsCount: 0,
-                    remainingItemsCount: 0,
+                    totalCount: 0,
+                    remainingCount: 0,
                 });
             });
         });
@@ -197,35 +197,35 @@ describe('MigrationJobsRunner integration', () => {
 
                 const module = await createTestingModule([job]);
                 const runner = module.get(MigrationJobsRunner);
-                const result = await runner.runNextChunk('test-job', 10);
+                const result = await runner.runNextBatch('test-job', 10);
 
                 expect(result.attemptedCount).toBe(3);
                 expect(result.succeededCount).toBe(2);
                 expect(result.failedCount).toBe(1);
                 expect(result.failures).toHaveLength(1);
                 expect(result.failures[0]).toMatchObject({ itemId: ids[1].toString(), error: 'processing error' });
-                expect(result.remainingItemsCount).toBe(0);
+                expect(result.remainingCount).toBe(0);
 
-                // Checkpoint must still be persisted (failure is a job-level decision, not a chunk abort)
+                // Checkpoint must still be persisted (failure is a job-level decision, not a batch abort)
                 const state = await migrationsCollection.findOne({ name: 'test-job' });
                 expect(state!.lastProcessedId.toString()).toBe(ids[2].toString());
             });
         });
 
-        describe('Given the chunk callback throws', () => {
+        describe('Given the batch callback throws', () => {
             it('should not advance checkpoint, should save error, and should release lock', async () => {
                 const ids = await insertTestDocs(5);
 
-                // First chunk: succeed to establish a checkpoint
+                // First batch: succeed to establish a checkpoint
                 const goodJob = makeJob('test-job');
                 const firstModule = await createTestingModule([goodJob]);
-                await firstModule.get(MigrationJobsRunner).runNextChunk('test-job', 2);
+                await firstModule.get(MigrationJobsRunner).runNextBatch('test-job', 2);
 
                 const stateAfterFirst = await migrationsCollection.findOne({ name: 'test-job' });
                 const checkpointAfterFirst = stateAfterFirst!.lastProcessedId.toString();
                 expect(checkpointAfterFirst).toBe(ids[1].toString());
 
-                // Second chunk: throws
+                // Second batch: throws
                 const throwingJob = makeJob('test-job', {
                     processBatch(): Promise<MigrationJobBatchResult> {
                         throw new Error('explosion');
@@ -234,7 +234,7 @@ describe('MigrationJobsRunner integration', () => {
                 const secondModule = await createTestingModule([throwingJob]);
                 const runner = secondModule.get(MigrationJobsRunner);
 
-                await expect(runner.runNextChunk('test-job', 2)).rejects.toThrow('explosion');
+                await expect(runner.runNextBatch('test-job', 2)).rejects.toThrow('explosion');
 
                 const stateAfterThrow = await migrationsCollection.findOne({ name: 'test-job' });
 
@@ -256,7 +256,7 @@ describe('MigrationJobsRunner integration', () => {
                     name: 'test-job',
                     lock: true,
                     lastProcessedId: null,
-                    lastRequestedCount: null,
+                    lastBatchSize: null,
                     lastRunError: '',
                     createdAt: new Date(),
                     updatedAt: new Date(),
@@ -265,7 +265,7 @@ describe('MigrationJobsRunner integration', () => {
                 const module = await createTestingModule([makeJob('test-job')]);
                 const runner = module.get(MigrationJobsRunner);
 
-                await expect(runner.runNextChunk('test-job', 5)).rejects.toThrow(JobAlreadyRunningError);
+                await expect(runner.runNextBatch('test-job', 5)).rejects.toThrow(JobAlreadyRunningError);
             });
 
             it('should allow concurrent runs of different jobs', async () => {
@@ -278,8 +278,8 @@ describe('MigrationJobsRunner integration', () => {
                 const runner = module.get(MigrationJobsRunner);
 
                 const [resultA, resultB] = await Promise.all([
-                    runner.runNextChunk('job-a', 5),
-                    runner.runNextChunk('job-b', 5),
+                    runner.runNextBatch('job-a', 5),
+                    runner.runNextBatch('job-b', 5),
                 ]);
 
                 expect(resultA.attemptedCount).toBe(5);
@@ -292,17 +292,23 @@ describe('MigrationJobsRunner integration', () => {
                 const module = await createTestingModule([]);
                 const runner = module.get(MigrationJobsRunner);
 
-                await expect(runner.runNextChunk('nonexistent', 10)).rejects.toThrow(JobNotFoundError);
+                await expect(runner.runNextBatch('nonexistent', 10)).rejects.toThrow(JobNotFoundError);
 
                 // No state document should have been created
                 const docs = await migrationsCollection.find({ name: { $exists: true } }).toArray();
                 expect(docs).toHaveLength(0);
             });
 
-            it('should throw InvalidRequestedCountError for zero', async () => {
+            it('should throw InvalidBatchSizeError for zero', async () => {
                 const module = await createTestingModule([makeJob('test-job')]);
                 const runner = module.get(MigrationJobsRunner);
-                await expect(runner.runNextChunk('test-job', 0)).rejects.toThrow(InvalidRequestedCountError);
+                await expect(runner.runNextBatch('test-job', 0)).rejects.toThrow(InvalidBatchSizeError);
+            });
+
+            it('should throw InvalidBatchSizeError for a non-integer', async () => {
+                const module = await createTestingModule([makeJob('test-job')]);
+                const runner = module.get(MigrationJobsRunner);
+                await expect(runner.runNextBatch('test-job', 1.5)).rejects.toThrow(InvalidBatchSizeError);
             });
         });
     });

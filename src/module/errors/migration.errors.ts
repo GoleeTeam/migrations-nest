@@ -29,8 +29,8 @@ export class JobNotFoundError extends MigrationError {
     }
 }
 
-export class InvalidRequestedCountError extends MigrationError {
-    constructor(requestedCount: number) {
-        super(`requestedCount must be a positive integer, got: ${requestedCount}`);
+export class InvalidBatchSizeError extends MigrationError {
+    constructor(batchSize: number) {
+        super(`batchSize must be a positive integer, got: ${batchSize}`);
     }
 }

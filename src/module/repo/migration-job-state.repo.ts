@@ -4,7 +4,7 @@ type JobStateDocument = {
     name: string;
     lock: boolean;
     lastProcessedId: ObjectId | null;
-    lastRequestedCount: number | null;
+    lastBatchSize: number | null;
     lastRunError: string;
     createdAt: Date;
     updatedAt: Date;
@@ -29,7 +29,7 @@ export class MigrationJobStateRepo {
                     $set: { lock: true, updatedAt: new Date() },
                     $setOnInsert: {
                         lastProcessedId: null,
-                        lastRequestedCount: null,
+                        lastBatchSize: null,
                         lastRunError: '',
                         createdAt: new Date(),
                     },
@@ -52,13 +52,13 @@ export class MigrationJobStateRepo {
         return doc?.lastProcessedId ?? null;
     }
 
-    async saveProgress(jobName: string, lastProcessedId: ObjectId | null, lastRequestedCount: number): Promise<void> {
+    async saveProgress(jobName: string, lastProcessedId: ObjectId | null, lastBatchSize: number): Promise<void> {
         await this.collection.updateOne(
             { name: jobName },
             {
                 $set: {
                     lastProcessedId,
-                    lastRequestedCount,
+                    lastBatchSize,
                     lastRunError: '',
                     updatedAt: new Date(),
                 },
