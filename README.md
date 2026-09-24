@@ -130,8 +130,9 @@ The runner:
 - resumes after the persisted `lastProcessedId`;
 - prevents concurrent execution of the same job;
 - returns attempted, succeeded, failed, total, and remaining counts, an integer `progressPercentage` from 0 to 100,
-  and the current batch's `averageItemProcessingTimeMs`;
+  and the current batch's `itemsPerMinute`;
 - persists the last-run snapshot so `getJobStatus(jobName)` can return it without re-querying the source collection;
+- reports a human-readable `estimatedRemainingProcessingTime` based on the latest batch throughput;
 - advances past failures returned by `processBatch`;
 - preserves the previous checkpoint when `processBatch` throws.
 

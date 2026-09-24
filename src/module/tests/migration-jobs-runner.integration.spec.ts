@@ -144,7 +144,7 @@ describe('MigrationJobsRunner integration', () => {
                     remainingCount: 2,
                     progressPercentage: 60,
                 });
-                expect(result.averageItemProcessingTimeMs).toEqual(expect.any(Number));
+                expect(result.itemsPerMinute).toEqual(expect.any(Number));
 
                 // Checkpoint must be persisted
                 const state = await migrationsCollection.findOne({ name: 'test-job' });
@@ -185,7 +185,7 @@ describe('MigrationJobsRunner integration', () => {
                     totalCount: 0,
                     remainingCount: 0,
                     progressPercentage: 100,
-                    averageItemProcessingTimeMs: null,
+                    itemsPerMinute: null,
                 });
             });
         });
@@ -344,7 +344,8 @@ describe('MigrationJobsRunner integration', () => {
                     failedCount: null,
                     totalCount: null,
                     remainingCount: null,
-                    averageItemProcessingTimeMs: null,
+                    itemsPerMinute: null,
+                    estimatedRemainingProcessingTime: null,
                 });
                 const docs = await migrationsCollection.find({ name: 'test-job' }).toArray();
                 expect(docs).toHaveLength(0);
@@ -370,7 +371,8 @@ describe('MigrationJobsRunner integration', () => {
                     totalCount: runResult.totalCount,
                     remainingCount: runResult.remainingCount,
                     progressPercentage: runResult.progressPercentage,
-                    averageItemProcessingTimeMs: runResult.averageItemProcessingTimeMs,
+                    itemsPerMinute: runResult.itemsPerMinute,
+                    estimatedRemainingProcessingTime: expect.any(String),
                 });
             });
         });

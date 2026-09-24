@@ -13,7 +13,8 @@ type JobStateDocument = {
     totalCount: number | null;
     remainingCount: number | null;
     progressPercentage: number | null;
-    averageItemProcessingTimeMs: number | null;
+    itemsPerMinute: number | null;
+    estimatedRemainingProcessingTime: string | null;
     createdAt: Date;
     updatedAt: Date;
 };
@@ -26,7 +27,8 @@ type RunSnapshot = {
     totalCount: number;
     remainingCount: number;
     progressPercentage: number;
-    averageItemProcessingTimeMs: number | null;
+    itemsPerMinute: number | null;
+    estimatedRemainingProcessingTime: string | null;
 };
 
 export class MigrationJobStateRepo {
@@ -56,7 +58,8 @@ export class MigrationJobStateRepo {
                         totalCount: null,
                         remainingCount: null,
                         progressPercentage: null,
-                        averageItemProcessingTimeMs: null,
+                        itemsPerMinute: null,
+                        estimatedRemainingProcessingTime: null,
                         createdAt: new Date(),
                     },
                 },
@@ -92,7 +95,8 @@ export class MigrationJobStateRepo {
                     totalCount: snapshot.totalCount,
                     remainingCount: snapshot.remainingCount,
                     progressPercentage: snapshot.progressPercentage,
-                    averageItemProcessingTimeMs: snapshot.averageItemProcessingTimeMs,
+                    itemsPerMinute: snapshot.itemsPerMinute,
+                    estimatedRemainingProcessingTime: snapshot.estimatedRemainingProcessingTime,
                     updatedAt: new Date(),
                 },
             },

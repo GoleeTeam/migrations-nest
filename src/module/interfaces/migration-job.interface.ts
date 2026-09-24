@@ -28,7 +28,7 @@ export interface MigrationJobRunResult {
     totalCount: number;
     remainingCount: number;
     progressPercentage: number;
-    averageItemProcessingTimeMs: number | null;
+    itemsPerMinute: number | null;
     extra?: unknown;
 }
 
@@ -42,5 +42,6 @@ export interface MigrationJobStatus {
     totalCount: number | null;
     remainingCount: number | null;
     progressPercentage: number;
-    averageItemProcessingTimeMs: number | null;
+    itemsPerMinute: number | null;
+    estimatedRemainingProcessingTime: string | null;
 }

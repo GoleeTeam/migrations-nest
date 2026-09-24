@@ -30,7 +30,7 @@ export class MigrationJobsRunner implements OnModuleInit {
     async runNextBatch(jobName: string, batchSize: number): Promise<MigrationJobRunResult> {
         this.validateBatchSize(batchSize);
 
-        const job = this.jobs.find((j) => j.name === jobName);
+        const job = this.jobs.find((candidate) => candidate.name === jobName);
         if (!job) {
             throw new JobNotFoundError(jobName);
         }
@@ -60,7 +60,7 @@ export class MigrationJobsRunner implements OnModuleInit {
     }
 
     async getJobStatus(jobName: string): Promise<MigrationJobStatus> {
-        const job = this.jobs.find((j) => j.name === jobName);
+        const job = this.jobs.find((candidate) => candidate.name === jobName);
         if (!job) {
             throw new JobNotFoundError(jobName);
         }
@@ -77,7 +77,8 @@ export class MigrationJobsRunner implements OnModuleInit {
                 totalCount: null,
                 remainingCount: null,
                 progressPercentage: 0,
-                averageItemProcessingTimeMs: null,
+                itemsPerMinute: null,
+                estimatedRemainingProcessingTime: null,
             };
         }
 
@@ -91,7 +92,8 @@ export class MigrationJobsRunner implements OnModuleInit {
             totalCount: doc.totalCount,
             remainingCount: doc.remainingCount,
             progressPercentage: doc.progressPercentage ?? 0,
-            averageItemProcessingTimeMs: doc.averageItemProcessingTimeMs,
+            itemsPerMinute: doc.itemsPerMinute ?? null,
+            estimatedRemainingProcessingTime: doc.estimatedRemainingProcessingTime ?? null,
         };
     }
 
@@ -101,13 +103,14 @@ export class MigrationJobsRunner implements OnModuleInit {
 
         let failures: MigrationJobItemFailure[] = [];
         let extra: unknown;
-        let averageItemProcessingTimeMs: number | null = null;
+        let processingTimeMs: number | null = null;
+        let itemsPerMinute: number | null = null;
 
         if (batch.length > 0) {
             const processingStartedAt = process.hrtime.bigint();
             const result = await job.processBatch(batch);
-            const processingTimeMs = Number(process.hrtime.bigint() - processingStartedAt) / 1_000_000;
-            averageItemProcessingTimeMs = Math.round((processingTimeMs / batch.length) * 100) / 100;
+            processingTimeMs = Number(process.hrtime.bigint() - processingStartedAt) / 1_000_000;
+            itemsPerMinute = processingTimeMs > 0 ? Math.round((batch.length / processingTimeMs) * 60_000) : null;
             failures = result.failures;
             extra = result.extra;
         }
@@ -119,6 +122,12 @@ export class MigrationJobsRunner implements OnModuleInit {
             totalCount === 0
                 ? 100
                 : Math.min(100, Math.max(0, Math.round(((totalCount - remainingCount) / totalCount) * 100)));
+        const estimatedRemainingProcessingTime =
+            remainingCount === 0
+                ? '0m'
+                : processingTimeMs !== null
+                  ? formatDuration((remainingCount / batch.length) * processingTimeMs)
+                  : null;
 
         await this.stateRepo.saveProgress(jobName, newLastProcessedId, {
             batchSize,
@@ -128,13 +137,15 @@ export class MigrationJobsRunner implements OnModuleInit {
             totalCount,
             remainingCount,
             progressPercentage,
-            averageItemProcessingTimeMs,
+            itemsPerMinute,
+            estimatedRemainingProcessingTime,
         });
 
         this.logger.log(
             `Job "${jobName}" batch: attempted=${batch.length}, failed=${failures.length}, ` +
                 `total=${totalCount}, remaining=${remainingCount}, progress=${progressPercentage}%, ` +
-                `averageItemProcessingTime=${averageItemProcessingTimeMs ?? 'n/a'}ms`,
+                `itemsPerMinute=${itemsPerMinute ?? 'n/a'}, ` +
+                `estimatedRemainingProcessingTime=${estimatedRemainingProcessingTime ?? 'n/a'}`,
         );
 
         return {
@@ -147,8 +158,21 @@ export class MigrationJobsRunner implements OnModuleInit {
             totalCount,
             remainingCount,
             progressPercentage,
-            averageItemProcessingTimeMs,
+            itemsPerMinute,
             extra,
         };
     }
+}
+
+function formatDuration(durationMs: number): string {
+    if (durationMs < 60_000) return '<1m';
+
+    const totalMinutes = Math.ceil(durationMs / 60_000);
+    const days = Math.floor(totalMinutes / 1_440);
+    const hours = Math.floor((totalMinutes % 1_440) / 60);
+    const minutes = totalMinutes % 60;
+
+    return [days > 0 ? `${days}d` : null, hours > 0 ? `${hours}h` : null, minutes > 0 ? `${minutes}m` : null]
+        .filter(Boolean)
+        .join(' ');
 }
