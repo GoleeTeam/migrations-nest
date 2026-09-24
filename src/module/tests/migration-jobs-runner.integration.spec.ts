@@ -140,7 +140,9 @@ describe('MigrationJobsRunner integration', () => {
                     failures: [],
                     totalCount: 5,
                     remainingCount: 2,
+                    progressPercentage: 60,
                 });
+                expect(result.averageItemProcessingTimeMs).toEqual(expect.any(Number));
 
                 // Checkpoint must be persisted
                 const state = await migrationsCollection.findOne({ name: 'test-job' });
@@ -161,6 +163,7 @@ describe('MigrationJobsRunner integration', () => {
 
                 expect(result.attemptedCount).toBe(2);
                 expect(result.remainingCount).toBe(0);
+                expect(result.progressPercentage).toBe(100);
             });
         });
 
@@ -179,6 +182,8 @@ describe('MigrationJobsRunner integration', () => {
                     failedCount: 0,
                     totalCount: 0,
                     remainingCount: 0,
+                    progressPercentage: 100,
+                    averageItemProcessingTimeMs: null,
                 });
             });
         });

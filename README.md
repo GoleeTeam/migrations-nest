@@ -55,6 +55,7 @@ import { Document, WithId } from 'mongodb';
 export class RebuildProfileProjection implements MigrationJob {
     name = 'rebuild-profile-projection';
     collectionName = 'profiles';
+    filter = { deleted: false };
 
     constructor(private readonly projection: ProfilesProjection) {}
 
@@ -121,8 +122,10 @@ The runner:
 - reads at most `batchSize` documents in ascending `_id` order;
 - resumes after the persisted `lastProcessedId`;
 - prevents concurrent execution of the same job;
-- returns attempted, succeeded, failed, total, and remaining counts;
+- returns attempted, succeeded, failed, total, and remaining counts, an integer `progressPercentage` from 0 to 100,
+  and the current batch's `averageItemProcessingTimeMs`;
 - advances past failures returned by `processBatch`;
 - preserves the previous checkpoint when `processBatch` throws.
 
-Jobs use `secondaryPreferred` by default. Set `readPreference` or `filter` on the job when different query options are required.
+Jobs use `secondaryPreferred` by default. Set `readPreference` to change it. The optional `filter` limits which source
+documents are counted and processed; the example above excludes deleted profiles with `{ deleted: false }`.

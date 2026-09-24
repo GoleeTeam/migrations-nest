@@ -58,9 +58,13 @@ export class MigrationJobsRunner implements OnModuleInit {
 
         let failures: MigrationJobItemFailure[] = [];
         let extra: unknown;
+        let averageItemProcessingTimeMs: number | null = null;
 
         if (batch.length > 0) {
+            const processingStartedAt = process.hrtime.bigint();
             const result = await job.processBatch(batch);
+            const processingTimeMs = Number(process.hrtime.bigint() - processingStartedAt) / 1_000_000;
+            averageItemProcessingTimeMs = Math.round((processingTimeMs / batch.length) * 100) / 100;
             failures = result.failures;
             extra = result.extra;
         }
@@ -71,12 +75,17 @@ export class MigrationJobsRunner implements OnModuleInit {
             newLastProcessedId !== null
                 ? await collection.countDocuments({ ...filter, _id: { $gt: newLastProcessedId } }, { readPreference })
                 : 0;
+        const progressPercentage =
+            totalCount === 0
+                ? 100
+                : Math.min(100, Math.max(0, Math.round(((totalCount - remainingCount) / totalCount) * 100)));
 
         await this.repo.saveProgress(jobName, newLastProcessedId, batchSize);
 
         this.logger.log(
             `Job "${jobName}" batch: attempted=${batch.length}, failed=${failures.length}, ` +
-                `total=${totalCount}, remaining=${remainingCount}`,
+                `total=${totalCount}, remaining=${remainingCount}, progress=${progressPercentage}%, ` +
+                `averageItemProcessingTime=${averageItemProcessingTimeMs ?? 'n/a'}ms`,
         );
 
         return {
@@ -88,6 +97,8 @@ export class MigrationJobsRunner implements OnModuleInit {
             failures,
             totalCount,
             remainingCount,
+            progressPercentage,
+            averageItemProcessingTimeMs,
             extra,
         };
     }

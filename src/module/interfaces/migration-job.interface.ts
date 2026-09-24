@@ -27,5 +27,7 @@ export interface MigrationJobRunResult {
     failures: MigrationJobItemFailure[];
     totalCount: number;
     remainingCount: number;
+    progressPercentage: number;
+    averageItemProcessingTimeMs: number | null;
     extra?: unknown;
 }
